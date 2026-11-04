@@ -35,3 +35,24 @@ test("switches live when the operating system changes its preference", async ({ 
 
   await expect.poll(() => backgroundOf(page)).toBe(DARK);
 });
+
+test.describe("workspace in dark mode", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("is dark around a white page with a visible marker", async ({ page }, testInfo) => {
+    await page.goto("/");
+    await page.getByLabel("Exam PDF").setInputFiles({
+      name: "exam.pdf",
+      mimeType: "application/pdf",
+      buffer: (await import("./api")).examPdf,
+    });
+    await expect(page.locator("canvas.react-pdf__Page__canvas")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Number on/ })).toBeVisible();
+
+    expect(await backgroundOf(page)).toBe(DARK);
+    await testInfo.attach("workspace-dark.png", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+  });
+});

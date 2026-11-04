@@ -69,7 +69,7 @@ check: lint test e2e ## Everything CI runs
 
 lint: lint-backend lint-frontend ## Run all linters and type checks
 lint-backend:
-	cd $(BACKEND) && $(UV) run ruff check . && $(UV) run ruff format --check .
+	cd $(BACKEND) && $(UV) run ruff check . ../e2e/tools && $(UV) run ruff format --check . ../e2e/tools
 lint-frontend: $(NODE_DEPS)
 	$(YARN) prettier --check .
 	$(YARN) workspace frontend lint
@@ -77,7 +77,7 @@ lint-frontend: $(NODE_DEPS)
 	$(YARN) workspace e2e typecheck
 
 format: $(NODE_DEPS) ## Auto-format all code (ruff for Python, Prettier for TS/JSON/YAML)
-	cd $(BACKEND) && $(UV) run ruff format . && $(UV) run ruff check --fix .
+	cd $(BACKEND) && $(UV) run ruff format . ../e2e/tools && $(UV) run ruff check --fix . ../e2e/tools
 	$(YARN) prettier --write .
 
 build: $(NODE_DEPS) ## Build the production frontend bundle

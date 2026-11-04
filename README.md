@@ -11,7 +11,8 @@ need and download one print-ready PDF that contains all numbered copies.
 > complete; the web interface has its foundation (WP5: theme, routing, API
 > client), the upload screen (WP6), the PDF viewer (WP7) and the placement
 > tools (WP8), saved configurations (WP9) and generating with download (WP10):
-> the complete flow works. Next: hardening the e2e suite and production packaging. The web features below are being implemented package
+> the complete flow works and is covered end to end (WP11). Next: production
+> packaging with Docker behind Traefik (WP12). The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage
@@ -120,7 +121,10 @@ make format
 
 The Playwright tests start their own Django server (port 8765, fresh database
 in `e2e/.data/`) and a production build of the frontend (port 4173) and run on
-a desktop and a phone viewport:
+a desktop and a phone viewport. They cover the whole flow from upload to the
+deleted download, privacy between browsers, both colour schemes, and that the
+number in the preview lands exactly where it is printed (PDFs are inspected
+with the backend's Python environment, so run `make install` first):
 
 ```bash
 make e2e

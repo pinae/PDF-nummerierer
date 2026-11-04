@@ -21,6 +21,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // A first PDF render (pdf.js worker start-up) can take several seconds on
+  // slow or busy CI machines; 5 s (the default) is too tight for that.
+  expect: { timeout: 10_000 },
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP10 done: the complete flow works end to end.** Next: WP11 (e2e hardening). This document is the
+Status: **WP0–WP11 done: the complete flow works end to end and is covered by e2e tests.** Next: WP12 (production packaging). This document is the
 binding plan for all work packages.
 
 ---
@@ -571,6 +571,18 @@ copies → download → verify the downloaded PDF's page count and stamped text
 with pypdf → verify server-side deletion). Security spec: second browser
 context gets 404 on foreign document/job/download URLs. Dark-mode smoke shot.
 *(E2E skeletons are written per-package from WP6 on; WP11 completes and hardens the suite.)*
+*Status: done.* `e2e/tests/preview-equals-output.spec.ts` compares the ink of
+the number in the browser preview (screenshot with vs. without the marker)
+with the ink in the generated PDF (PDFium render of output vs. upload) for
+CMU Serif, Caveat 24 pt and DejaVu Sans on a rotated page with an offset crop
+box; they agree within 1.5 pt (measured: about 0.7 pt), and a 5 pt shift in the
+backend's rotation mapping makes it fail. `journey.spec.ts` runs the whole
+happy path on desktop and phone and checks the downloaded PDF page by page
+with pypdf. PDF inspection uses `e2e/tools/inspect_pdf.py` in the backend's
+uv environment (no PDF libraries in Node). Security: `documents-security.spec.ts`
+and `generation.spec.ts` (a second browser with its own valid session gets
+404 for documents, files, jobs and downloads). The suite runs twice in a row
+without retries without failures.
 
 **WP12 — Production packaging & docs.**
 Dockerfile (multi-stage: yarn build → collectstatic → gunicorn+WhiteNoise),

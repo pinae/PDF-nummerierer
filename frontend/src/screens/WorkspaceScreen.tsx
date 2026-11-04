@@ -25,7 +25,7 @@ import { useFonts } from "../placement/fonts";
 import { PlacementTools } from "../placement/PlacementTools";
 import { RoleSelector } from "../placement/RoleSelector";
 import { formatSerial } from "../placement/serial";
-import { initialEditorState, placementReducer } from "../placement/state";
+import { initialEditorState, placementReducer, ROLES } from "../placement/state";
 import { StampOverlay } from "../placement/StampOverlay";
 import { ToolsPanel } from "../placement/ToolsPanel";
 import { strings } from "../strings";
@@ -119,9 +119,11 @@ function Workspace({ document }: { document: DocumentInfo }) {
   const [startText, setStartText] = useState("1");
   const [padToEven, setPadToEven] = useState(true);
   const [generation, setGeneration] = useState<GenerationState | null>(null);
-  const { fonts } = useFonts();
   const role = roleOfPage(page);
   const placements = editor.config.placements;
+  const { fonts, loadAll } = useFonts(
+    ROLES.map((pageRole) => (placements[pageRole] ?? editor.remembered[pageRole]).font),
+  );
   const numberFormat = editor.config.number_format;
 
   const maxCopies = limits?.max_copies ?? DEFAULT_MAX_COPIES;
@@ -249,6 +251,7 @@ function Workspace({ document }: { document: DocumentInfo }) {
           stampText={stampText}
           marginMm={marginMm}
           onMarginChange={setMarginMm}
+          onFontMenuOpen={loadAll}
           dispatch={dispatch}
         />
         <Divider sx={{ my: 2 }} />

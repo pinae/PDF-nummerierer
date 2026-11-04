@@ -43,6 +43,8 @@ export interface PlacementToolsProps {
   stampText: string;
   marginMm: number;
   onMarginChange: (mm: number) => void;
+  /** Called when the font menu opens, to load all fonts for their previews. */
+  onFontMenuOpen?: () => void;
   dispatch: Dispatch<EditorAction>;
 }
 
@@ -91,6 +93,7 @@ export function PlacementTools({
   stampText,
   marginMm,
   onMarginChange,
+  onFontMenuOpen,
   dispatch,
 }: PlacementToolsProps) {
   const fontLabelId = useId();
@@ -134,6 +137,7 @@ export function PlacementTools({
                 labelId={fontLabelId}
                 label={text.font}
                 value={placement.font}
+                onOpen={onFontMenuOpen}
                 onChange={(event) => dispatch({ type: "style", role, font: event.target.value })}
               >
                 {CATEGORIES.flatMap((category) => {

@@ -92,6 +92,10 @@ Environment quirks you may hit in sandboxed/cloud containers:
   `src/test/reactPdfMock.tsx` (see `src/test/setup.ts`), so anything about real
   rendering must be covered by Playwright. Convert between PDF points and
   screen pixels only with `src/pdf/coordinates.ts`.
+- E2E tests inspect PDFs (page count, text, ink positions) through
+  `e2e/tests/pdfTools.ts`, which runs `e2e/tools/inspect_pdf.py` in the
+  backend's uv environment. Any change to placement, fonts or the generator
+  must keep `preview-equals-output.spec.ts` green.
 - Run the checks on the Node version in `.nvmrc` (the one CI uses): some
   incompatibilities only show up there.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),

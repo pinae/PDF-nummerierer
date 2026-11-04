@@ -128,6 +128,7 @@ export function StampOverlay({ info, placement, visible, text, label, onMove }: 
   return (
     <svg
       ref={svg}
+      data-testid="stamp-overlay"
       width="100%"
       height="100%"
       style={{ position: "absolute", inset: 0, overflow: "visible" }}

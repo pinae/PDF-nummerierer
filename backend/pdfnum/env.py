@@ -29,3 +29,16 @@ def env_list(name: str, default: list[str]) -> list[str]:
     if raw is None:
         return default
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ImproperlyConfigured(f"{name} must be an integer, got {raw!r}.") from None
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {value}.")
+    return value

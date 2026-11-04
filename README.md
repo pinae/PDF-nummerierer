@@ -5,8 +5,8 @@ multi-page exam can never be mixed up between students. Upload the exam, place
 the number visually on the first, odd and even pages, choose how many copies you
 need and download one print-ready PDF that contains all numbered copies.
 
-> **Status:** under development. Done: project scaffolding (WP0) and the PDF
-> stamping library (WP1). The web features below are being implemented package
+> **Status:** under development. Done: project scaffolding (WP0), the PDF
+> stamping library (WP1) and the document upload API (WP2). The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage
@@ -163,6 +163,9 @@ The backend is configured with environment variables:
 | `PDFNUM_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated host names the app is served under |
 | `PDFNUM_DATA_DIR` | `backend/var` | Directory for the SQLite database and uploaded/generated PDFs |
 | `PDFNUM_SECURE_COOKIES` | on unless debug | Send session and CSRF cookies only over HTTPS |
+| `PDFNUM_MAX_UPLOAD_BYTES` | `524288000` (500 MB) | Largest PDF that can be uploaded |
+| `PDFNUM_RETENTION_SECONDS` | `7200` (2 hours) | Uploaded and generated PDFs are deleted at the latest after this time; also the session lifetime |
+| `PDFNUM_UPLOAD_RATE` | `60/hour` | Uploads allowed per client IP (`N/second`, `N/minute`, `N/hour`, `N/day`) |
 
 Boolean variables accept `1/0`, `true/false` or `on/off`.
 

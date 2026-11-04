@@ -59,10 +59,18 @@ Environment quirks you may hit in sandboxed/cloud containers:
   everywhere in storage and APIs. Rotation/crop handling lives only in
   `backend/stamping/geometry.py`; the frontend converts pt ↔ px with one shared
   pure function and never re-implements this elsewhere.
+- Security tests must model a real attacker: the "other browser" in tests has
+  an active session with its own upload (see `other_client`), otherwise a
+  broken owner check can still pass. Check new security tests by breaking the
+  guarded code once and watching them fail.
+- DRF views skip Django's CSRF middleware; keep
+  `pdfnum.api.CsrfEnforcingAnonymousAuthentication` as the default
+  authentication class and never set `authentication_classes` on a view.
 - Changes to PDF output need render-based tests (`stamping/tests/render.py`,
   PDFium) proving what ends up on paper, not just pypdf structure checks.
 - Security invariants (do not weaken, add tests when touching them):
-  session-key binding on every Document/Job query, 404 (never 403) on foreign
+  owner-token binding (session data, key rotated on first upload) on every
+  Document/Job query, expired objects treated as gone, 404 (never 403) on foreign
   objects, UUID ids in URLs, CSRF on all mutations, uploads validated by magic
   bytes + pypdf parse, media never served statically, files deleted after
   download and by TTL sweep.

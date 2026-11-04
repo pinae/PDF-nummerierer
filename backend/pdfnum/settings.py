@@ -9,7 +9,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-from .env import env_bool, env_list, env_str
+from .env import env_bool, env_int, env_list, env_str
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,14 +26,23 @@ ALLOWED_HOSTS = env_list("PDFNUM_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 DATA_DIR = Path(env_str("PDFNUM_DATA_DIR") or BASE_DIR / "var")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+# --- Limits -------------------------------------------------------------------
+PDFNUM_MAX_UPLOAD_BYTES = env_int("PDFNUM_MAX_UPLOAD_BYTES", 500 * 1024 * 1024)
+# Uploaded and generated PDFs are deleted at the latest after this time.
+PDFNUM_RETENTION_SECONDS = env_int("PDFNUM_RETENTION_SECONDS", 2 * 60 * 60)
+PDFNUM_UPLOAD_RATE = env_str("PDFNUM_UPLOAD_RATE", "60/hour")
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "documents",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "pdfnum.middleware.RequestSizeLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -60,7 +69,14 @@ DATABASES = {
     }
 }
 
+# Uploaded exams are private: MEDIA_URL is deliberately not routed anywhere,
+# files are only ever streamed by views that check the owner.
 MEDIA_ROOT = DATA_DIR / "media"
+MEDIA_URL = ""
+FILE_UPLOAD_PERMISSIONS = 0o600
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
+FILE_UPLOAD_TEMP_DIR = DATA_DIR / "tmp"
+FILE_UPLOAD_TEMP_DIR.mkdir(exist_ok=True)
 STATIC_URL = "static/"
 STATIC_ROOT = DATA_DIR / "static"
 
@@ -79,6 +95,7 @@ SECURE_COOKIES = env_bool("PDFNUM_SECURE_COOKIES", default=not DEBUG)
 SESSION_COOKIE_SECURE = SECURE_COOKIES
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = PDFNUM_RETENTION_SECONDS
 
 CSRF_COOKIE_SECURE = SECURE_COOKIES
 CSRF_COOKIE_SAMESITE = "Lax"
@@ -87,3 +104,14 @@ CSRF_COOKIE_HTTPONLY = False
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
+
+# --- API ----------------------------------------------------------------------
+REST_FRAMEWORK = {
+    # Nobody logs in, but CSRF must still be enforced (see pdfnum/api.py).
+    "DEFAULT_AUTHENTICATION_CLASSES": ["pdfnum.api.CsrfEnforcingAnonymousAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "UNAUTHENTICATED_USER": None,
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "EXCEPTION_HANDLER": "pdfnum.api.exception_handler",
+}

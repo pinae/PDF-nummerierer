@@ -12,6 +12,9 @@ ENV_VARS = [
     "PDFNUM_ALLOWED_HOSTS",
     "PDFNUM_DATA_DIR",
     "PDFNUM_SECURE_COOKIES",
+    "PDFNUM_UPLOAD_RATE",
+    "PDFNUM_RETENTION_SECONDS",
+    "PDFNUM_MAX_UPLOAD_BYTES",
 ]
 
 
@@ -108,3 +111,50 @@ def test_missing_data_dir_is_created(load_settings, tmp_path):
     load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_DATA_DIR=str(data_dir))
 
     assert data_dir.is_dir()
+
+
+def test_upload_limit_defaults_to_500_megabytes(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert settings.PDFNUM_MAX_UPLOAD_BYTES == 500 * 1024 * 1024
+
+
+def test_retention_defaults_to_two_hours_and_bounds_the_session(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert settings.PDFNUM_RETENTION_SECONDS == 2 * 60 * 60
+    assert settings.SESSION_COOKIE_AGE == settings.PDFNUM_RETENTION_SECONDS
+
+
+def test_limits_can_be_configured(load_settings):
+    settings = load_settings(
+        PDFNUM_SECRET_KEY="x" * 50,
+        PDFNUM_MAX_UPLOAD_BYTES="1000",
+        PDFNUM_RETENTION_SECONDS="60",
+        PDFNUM_UPLOAD_RATE="5/minute",
+    )
+
+    assert settings.PDFNUM_MAX_UPLOAD_BYTES == 1000
+    assert settings.PDFNUM_RETENTION_SECONDS == 60
+    assert settings.PDFNUM_UPLOAD_RATE == "5/minute"
+
+
+@pytest.mark.parametrize("raw", ["0", "-5", "lots"])
+def test_invalid_limits_are_rejected(load_settings, raw):
+    with pytest.raises(ImproperlyConfigured, match="PDFNUM_MAX_UPLOAD_BYTES"):
+        load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_MAX_UPLOAD_BYTES=raw)
+
+
+def test_uploaded_files_are_private_to_the_server_user(load_settings, tmp_path):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_DATA_DIR=str(tmp_path))
+
+    assert settings.FILE_UPLOAD_PERMISSIONS == 0o600
+    assert settings.FILE_UPLOAD_DIRECTORY_PERMISSIONS == 0o700
+    assert Path(settings.FILE_UPLOAD_TEMP_DIR) == tmp_path / "tmp"
+    assert (tmp_path / "tmp").is_dir()
+
+
+def test_media_is_never_given_a_public_url(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert settings.MEDIA_URL in ("", "/")

@@ -47,6 +47,7 @@ export default defineConfig({
         PDFNUM_SECRET_KEY: "e2e-only-insecure-secret-key",
         PDFNUM_DATA_DIR: dataDir,
         PDFNUM_ALLOWED_HOSTS: "127.0.0.1,localhost",
+        PDFNUM_UPLOAD_RATE: "1000/hour",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0 and WP1 done.** Next: WP2. This document is the
+Status: **WP0–WP2 done.** Next: WP3. This document is the
 binding plan for all work packages.
 
 ---
@@ -164,16 +164,18 @@ Placement                     # 0–3 rows per config
 
 Document
   id          UUID pk        # unguessable; used in all URLs
-  session_key str (indexed)  # Django session that uploaded it
-  file        FileField      # stored under MEDIA_ROOT with server-generated name
+  owner       str (indexed)  # random owner token stored in the uploader's session
+  file        FileField      # MEDIA_ROOT/documents/<id>.pdf, never the upload name
+  name        str            # sanitized upload name, display only
+  size        int
   page_count  int
-  page_sizes  JSON           # [w_pt, h_pt] per page, for the frontend
-  created_at  datetime       # drives TTL cleanup
+  page_sizes  JSON           # [w_pt, h_pt] per page as displayed, for the frontend
+  created_at  datetime       # drives expiry (expires_at = created_at + TTL)
 
 GenerationJob
   id          UUID pk
   document    FK → Document
-  session_key str
+  owner       str            # same owner token as the document
   status      enum {pending, running, done, failed}
   copies_total / copies_done  int      # determinate progress
   params      JSON           # resolved config snapshot + copies + start number
@@ -220,23 +222,34 @@ The UI *displays* positions in millimetres.
 | Method & path | Purpose |
 |---|---|
 | `GET  /api/csrf/` | sets CSRF cookie for the SPA |
-| `POST /api/documents/` | multipart upload → `{id, page_count, page_sizes}` |
-| `GET  /api/documents/{uuid}/file/` | the PDF for preview (session-checked, `nosniff`) |
-| `DELETE /api/documents/{uuid}/` | "Delete now" |
+| `POST /api/documents/` | multipart upload (field `file`) → document payload (201) |
+| `GET  /api/documents/{uuid}/` | document payload: `{id, name, size, page_count, page_sizes, created_at, expires_at}` |
+| `GET  /api/documents/{uuid}/file/` | the PDF for preview (owner-checked, `nosniff`, `no-store`) |
+| `DELETE /api/documents/{uuid}/` | "Delete now" (204) |
 | `GET/POST /api/configs/` | list latest version per name / save new (version) |
 | `GET /api/configs/{uuid}/` | one config incl. placements |
 | `POST /api/documents/{uuid}/generate/` | `{config, copies, start}` → `{job_id}` |
 | `GET  /api/jobs/{uuid}/` | `{status, copies_done, copies_total}` for polling |
 | `GET  /api/jobs/{uuid}/download/` | the final PDF; schedules deletion afterwards |
 
+Errors always have the shape `{"error": {"code": "...", "message": "..."}}`
+with a stable `code` for the frontend and an English `message` for humans.
+Upload codes: `missing_file`, `too_large` (413), `not_pdf`, `invalid_pdf`,
+`encrypted_pdf`; general codes: `not_found`, `csrf_failed`, `throttled` (429),
+`method_not_allowed`.
+
 Generation runs in an in-process worker thread (a departmental tool doesn't
 need Celery/Redis); the job row carries determinate progress ("copy 37 of 200").
 
 ### Security model (no authentication, hostile students assumed)
 
-1. **Session binding**: every `Document`/`GenerationJob` stores the Django
-   `session_key` of its creator; every read/download/delete filters by it.
-   A miss returns **404** (not 403 — don't confirm existence).
+1. **Session binding**: on the first upload a random owner token is stored in
+   the session and the session key is rotated (`cycle_key`), so a session
+   cookie planted beforehand (session fixation) never leads to the exam. Every
+   `Document`/`GenerationJob` stores this owner token; every
+   read/download/delete filters by it, and expired documents count as gone
+   even before the sweep deletes them. A miss returns **404** (not 403 — don't
+   confirm existence).
 2. **Unguessable IDs**: UUID4 primary keys in all URLs — defense in depth on
    top of, never instead of, the session check.
 3. **Session cookie hardening**: `SESSION_COOKIE_SECURE`, `HTTPONLY`,
@@ -244,8 +257,12 @@ need Celery/Redis); the job row carries determinate progress ("copy 37 of 200").
    No state change ever happens on GET.
 4. **CSRF**: Django's double-submit cookie; the SPA reads the `csrftoken`
    cookie and echoes it as `X-CSRFToken` on every mutating request.
-   Same-origin deployment means no CORS surface at all.
-5. **Upload validation**: size cap enforced server-side; magic-byte check
+   Same-origin deployment means no CORS surface at all. DRF skips CSRF for
+   anonymous users, so `pdfnum.api.CsrfEnforcingAnonymousAuthentication`
+   enforces it on every API view (tested).
+5. **Upload validation**: size cap enforced server-side, first from the
+   `Content-Length` header by a middleware before any body is read, then on
+   the parsed file; magic-byte check
    (`%PDF-`); the file must actually parse with pypdf; encrypted PDFs are
    rejected with a clear message. Stored under a server-generated name outside
    anything statically served; original filename is never used on disk.
@@ -258,7 +275,10 @@ need Celery/Redis); the job row carries determinate progress ("copy 37 of 200").
    plus opportunistic cleanup at the start of upload requests, so files die
    even if the user walks away mid-flow.
 8. **Headers & misc**: `SECURE_*` settings, CSP for the SPA, upload endpoint
-   throttling (DRF anon throttle) to blunt abuse.
+   throttling per client IP (`PDFNUM_UPLOAD_RATE`, default 60/hour) to blunt
+   abuse. Files are written with mode 0600 and never get a URL (`MEDIA_URL`
+   is not routed). WP12 must configure the proxy count for the client IP
+   (`NUM_PROXIES`) and a shared cache for throttling with several workers.
 
 The e2e suite contains an explicit **hijack test**: a second browser context
 requests the first context's document and job URLs and must get 404s.
@@ -365,6 +385,7 @@ binding (second session → 404); size cap, magic-byte, parse and encrypted-PDF
 rejections with distinct error codes; preview file endpoint with `nosniff`;
 DELETE; CSRF enforced on mutations; csrf bootstrap endpoint.
 *Acceptance: full test matrix green; no way to read a foreign document.*
+*Status: done. Expired documents are also purged at the start of every upload; the TTL sweep command follows in WP4.*
 
 **WP3 — Configs API.**
 Tests first: save creates (name, version=1); saving same name creates version 2

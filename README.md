@@ -8,7 +8,8 @@ need and download one print-ready PDF that contains all numbered copies.
 > **Status:** under development. Done: project scaffolding (WP0), the PDF
 > stamping library (WP1), the document upload API (WP2), the saved
 > configurations API (WP3) and generation with download (WP4). The backend is
-> complete; the web interface is next. The web features below are being implemented package
+> complete; the web interface has its foundation (WP5: theme, routing, API
+> client) and the screens are next. The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage
@@ -50,7 +51,7 @@ Requirements:
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (it installs
   Python 3.14 automatically)
-- Node.js ≥ 22.12 (the current LTS, 26, is recommended; see `.nvmrc`)
+- Node.js ≥ 22.22 (the current LTS, 26, is recommended; see `.nvmrc`)
 - yarn 4 via Corepack. Node 22/24 ship Corepack: run `corepack enable`. From
   Node 25 on, install it first: `npm install --global corepack && corepack enable`.
 - GNU make

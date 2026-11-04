@@ -74,8 +74,13 @@ Environment quirks you may hit in sandboxed/cloud containers:
   objects, UUID ids in URLs, CSRF on all mutations, uploads validated by magic
   bytes + pypdf parse, media never served statically, files deleted after
   download and by TTL sweep.
-- Frontend strings live centralized (prepared for i18n), themes must work in
-  light **and** dark, layouts must work at phone width and on large screens.
+- Frontend strings live in `frontend/src/strings.ts` (prepared for i18n), themes
+  must work in light **and** dark, layouts must work at phone width and on
+  large screens. Style dark variants with `theme.applyStyles("dark", …)`, never
+  with `theme.palette.mode` (the color scheme is chosen by a CSS media query).
+- Frontend API calls go through `src/api/endpoints.ts`/`client.ts`; tests mock
+  the network with MSW (`src/test/server.ts`, unhandled requests fail the
+  test) and render whole routes with `renderRoute(path)` from `src/test/render.tsx`.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),
   one work package per PR where feasible.
 - Do not add dependencies beyond the stack pinned in `docs/PLANNING.md`

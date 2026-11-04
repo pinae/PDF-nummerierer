@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP4 done (backend complete).** Next: WP5 (frontend foundation). This document is the
+Status: **WP0–WP5 done (backend complete, frontend foundation in place).** Next: WP6 (upload screen). This document is the
 binding plan for all work packages.
 
 ---
@@ -461,6 +461,14 @@ Tests first (Vitest/RTL): theme switches with `prefers-color-scheme`; API
 client attaches `X-CSRFToken` and surfaces typed errors; app shell renders;
 routing between the three screens.
 *Acceptance: suite green; dark/light verified by test and by eye.*
+*Status: done.* Routes: `/` upload, `/exams/:documentId` workspace (reload-safe),
+`/done`; unknown URLs redirect to `/` (React Router, added for reload-safe
+URLs and the browser back button). The theme uses MUI CSS variables with
+`colorSchemeSelector: "media"`: the browser's `prefers-color-scheme` picks the
+palette in pure CSS (no flash, follows OS changes live); verified in Chromium
+by the e2e theme test. `src/api/client.ts` adds the CSRF token (fetching the
+cookie first if needed) and turns every failure into an `ApiError` with
+`status`, `code`, `message` and `fields`.
 
 **WP6 — Upload screen.**
 Tests first: dropzone accept/reject states, limit + retention copy visible

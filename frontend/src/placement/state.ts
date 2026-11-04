@@ -23,7 +23,8 @@ export type EditorAction =
   | { type: "enable"; role: PageRole; enabled: boolean }
   | { type: "style"; role: PageRole; font?: string; font_size?: number }
   | { type: "applyToAll"; role: PageRole }
-  | { type: "load"; config: StampSettings };
+  | { type: "load"; config: StampSettings }
+  | { type: "format"; number_format: NumberFormat };
 
 export const ROLES: PageRole[] = ["first", "odd", "even"];
 export const DEFAULT_FONT = "cmu-serif";
@@ -92,6 +93,8 @@ export function placementReducer(state: EditorState, action: EditorAction): Edit
       const source = current(action.role);
       return ROLES.reduce((next, role) => withPlacement(next, role, { ...source }), state);
     }
+    case "format":
+      return { ...state, config: { ...state.config, number_format: action.number_format } };
     case "load": {
       const remembered = { ...state.remembered };
       for (const role of ROLES) {

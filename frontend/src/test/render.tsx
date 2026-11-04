@@ -1,12 +1,12 @@
 import { render } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createMemoryRouter, RouterProvider, type InitialEntry } from "react-router";
 
 import { routes } from "../routes";
 import { AppThemeProvider } from "../theme/AppThemeProvider";
 
-/** Render the whole app at `path`, like a user opening that URL. */
-export function renderRoute(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+/** Render the whole app at `entry` (a path, or a location with history state). */
+export function renderRoute(entry: InitialEntry) {
+  const router = createMemoryRouter(routes, { initialEntries: [entry] });
   const result = render(
     <AppThemeProvider>
       <RouterProvider router={router} />

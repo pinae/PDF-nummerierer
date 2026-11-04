@@ -139,6 +139,48 @@ export const strings = {
   },
   done: {
     title: "Your copies are ready",
+    started: (fileName: string) => `The download of “${fileName}” has started.`,
+    summary: (copies: number, pages: number) =>
+      `${copies} ${copies === 1 ? "copy" : "copies"}, ${pages} pages in one PDF, ready to print.`,
+    waiting:
+      "Your exam and the numbered copies are deleted from the server as soon as the download is complete.",
+    deleted: "Your exam and the numbered copies have been deleted from the server.",
+    downloadAgain: "Download again",
+    deleteNow: "Delete now",
+    another: "Number another exam",
+    nothing: "There is no finished download in this browser tab.",
+    start: "Number an exam",
+  },
+  generation: {
+    numbersTitle: "Numbers",
+    prefix: "Prefix",
+    digits: "Digits",
+    suffix: "Suffix",
+    start: "First number",
+    copies: "Copies",
+    copiesRange: (max: number) => `Enter a number from 1 to ${max}.`,
+    startRange: "Enter a whole number, 0 or more.",
+    sample: (first: string, last: string) =>
+      first === last ? `Number: ${first}` : `Numbers ${first} to ${last}`,
+    duplex: "Duplex printing: start every copy on a new sheet",
+    duplexHint: "Adds a blank page to copies with an odd number of pages.",
+    summary: (copies: number, pagesPerCopy: number, total: number) =>
+      `${copies} ${copies === 1 ? "copy" : "copies"} × ${pagesPerCopy} pages = ${total} pages`,
+    paddingNote: "Includes one blank page per copy for duplex printing.",
+    tooManyPages: (max: string) =>
+      `That is more than ${max} pages in one PDF. Please generate fewer copies at once.`,
+    numberIt: "Number it!",
+    progressTitle: "Numbering your exam",
+    stages: {
+      waiting: "Waiting to start…",
+      preparing: "Preparing…",
+      stamping: (done: number, total: number) => `Numbering copy ${done} of ${total}`,
+      writing: "Assembling the PDF…",
+      done: "Done. Starting the download…",
+    },
+    progressLabel: "Generation progress",
+    failed: "The copies could not be generated.",
+    close: "Close",
   },
   errors: {
     network: "The server cannot be reached. Please check your connection and try again.",

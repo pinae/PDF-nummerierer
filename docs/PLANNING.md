@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP9 done (backend complete; upload, viewer, placement and configs working).** Next: WP10 (generate & download flow). This document is the
+Status: **WP0–WP10 done: the complete flow works end to end.** Next: WP11 (e2e hardening). This document is the
 binding plan for all work packages.
 
 ---
@@ -543,6 +543,23 @@ switch (on by default) reflected in the page-count summary; summary before
 the expensive step ("200 copies, ~1800 pages"); staged determinate progress via
 polling; browser download; post-download deleted-confirmation + Delete now;
 restart flow.
+*Status: done.* A "Numbers" section sets prefix, digits, suffix and the first
+number, with a live sample ("Numbers A-005 to A-034"); the marker on the page
+shows the widest (last) number of the run. The duplex switch (on by default)
+explains the blank page. A footer that stays visible (also while the settings
+are collapsed on phones) holds the number of copies, the summary
+("30 copies × 4 pages = 120 pages", plus a note about padding) and
+"Number it!"; runs above the server's page limit are refused with an
+explanation. Generation is started from the click (never from an effect, so
+React StrictMode cannot start it twice); a dialog polls the job and shows
+"Preparing…", "Numbering copy 37 of 200", "Assembling the PDF…" with a
+determinate bar; errors (server refusal or failed job) are explained there.
+The download is a normal browser download of the attachment (streamed to
+disk, never held in memory). The done screen polls the document: because the
+backend deletes everything before the last bytes are sent, the document
+disappears exactly when the download completes, and the screen then confirms
+the deletion. Until then it offers "Download again" and "Delete now";
+"Number another exam" restarts.
 
 **WP11 — E2E suite (Playwright).**
 Preview-equals-output test: place the number in the browser, generate the PDF

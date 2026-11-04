@@ -10,7 +10,8 @@ need and download one print-ready PDF that contains all numbered copies.
 > configurations API (WP3) and generation with download (WP4). The backend is
 > complete; the web interface has its foundation (WP5: theme, routing, API
 > client), the upload screen (WP6), the PDF viewer (WP7) and the placement
-> tools (WP8) and saved configurations (WP9); generating from the UI is next. The web features below are being implemented package
+> tools (WP8), saved configurations (WP9) and generating with download (WP10):
+> the complete flow works. Next: hardening the e2e suite and production packaging. The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage

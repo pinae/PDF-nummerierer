@@ -6,11 +6,18 @@ import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { useCallback, useReducer, useState } from "react";
-import { Link as RouterLink, useParams } from "react-router";
+import { Link as RouterLink, useNavigate, useParams } from "react-router";
 
-import { documentFileUrl } from "../api/endpoints";
+import { documentFileUrl, startGeneration } from "../api/endpoints";
 import { ConfigSection } from "../configs/ConfigSection";
-import type { DocumentInfo, PageRole } from "../api/types";
+import type { DocumentInfo, Job, PageRole } from "../api/types";
+import { startDownload } from "../generation/download";
+import { describeError } from "../generation/errors";
+import { GenerationDialog, type GenerationState } from "../generation/GenerationDialog";
+import { NumbersSection } from "../generation/NumbersSection";
+import { runSummary } from "../generation/progress";
+import { RunFooter } from "../generation/RunFooter";
+import { useLimits } from "../hooks/useLimits";
 import { useDocument } from "../hooks/useDocument";
 import { ptToMm } from "../pdf/coordinates";
 import { firstPageOfRole, roleOfPage } from "../pdf/pages";
@@ -18,11 +25,12 @@ import { useFonts } from "../placement/fonts";
 import { PlacementTools } from "../placement/PlacementTools";
 import { RoleSelector } from "../placement/RoleSelector";
 import { formatSerial } from "../placement/serial";
-import { initialEditorState, placementReducer, PREVIEW_NUMBER } from "../placement/state";
+import { initialEditorState, placementReducer } from "../placement/state";
 import { StampOverlay } from "../placement/StampOverlay";
 import { ToolsPanel } from "../placement/ToolsPanel";
 import { strings } from "../strings";
 import { PdfViewer } from "../viewer/PdfViewer";
+import type { FinishedRun } from "./DoneScreen";
 
 const text = strings.workspace;
 
@@ -89,14 +97,79 @@ function WorkspaceLoader({ documentId }: { documentId: string }) {
   );
 }
 
+const DEFAULT_MAX_COPIES = 9999;
+const MAX_START = 999_999_999;
+
+function parseWhole(value: string): number | null {
+  return /^\d+$/.test(value.trim()) ? Number(value.trim()) : null;
+}
+
+/** The download name the backend uses: "<upload name without extension>-numbered.pdf". */
+function downloadName(uploadName: string): string {
+  return `${uploadName.replace(/\.[^./]*$/, "")}-numbered.pdf`;
+}
+
 function Workspace({ document }: { document: DocumentInfo }) {
+  const navigate = useNavigate();
+  const limits = useLimits();
   const [page, setPage] = useState(1);
   const [editor, dispatch] = useReducer(placementReducer, document.page_sizes, initialEditorState);
   const [marginMm, setMarginMm] = useState(10);
+  const [copiesText, setCopiesText] = useState("1");
+  const [startText, setStartText] = useState("1");
+  const [padToEven, setPadToEven] = useState(true);
+  const [generation, setGeneration] = useState<GenerationState | null>(null);
   const { fonts } = useFonts();
   const role = roleOfPage(page);
   const placements = editor.config.placements;
-  const stampText = formatSerial(editor.config.number_format, PREVIEW_NUMBER);
+  const numberFormat = editor.config.number_format;
+
+  const maxCopies = limits?.max_copies ?? DEFAULT_MAX_COPIES;
+  const parsedCopies = parseWhole(copiesText);
+  const copiesValid = parsedCopies !== null && parsedCopies >= 1 && parsedCopies <= maxCopies;
+  const copies = copiesValid ? parsedCopies : 1;
+  const parsedStart = parseWhole(startText);
+  const startValid = parsedStart !== null && parsedStart <= MAX_START;
+  const start = startValid ? parsedStart : 1;
+  const lastNumber = start + copies - 1;
+  // The preview shows the widest number of the run, so nothing can overflow later.
+  const stampText = formatSerial(numberFormat, lastNumber);
+  const sample = strings.generation.sample(formatSerial(numberFormat, start), stampText);
+  const summary = runSummary({ copies, pageCount: document.page_count, padToEven });
+
+  async function numberIt() {
+    setGeneration({ phase: "starting" });
+    try {
+      const job = await startGeneration(document.id, {
+        copies,
+        start,
+        pad_to_even: padToEven,
+        number_format: numberFormat,
+        placements,
+      });
+      setGeneration({ phase: "running", job });
+    } catch (error) {
+      setGeneration({ phase: "error", message: describeError(error) });
+    }
+  }
+
+  const onJob = useCallback((job: Job) => setGeneration({ phase: "running", job }), []);
+  const onError = useCallback((message: string) => setGeneration({ phase: "error", message }), []);
+  const onDone = useCallback(
+    (job: Job) => {
+      const downloadUrl = job.download_url ?? `/api/jobs/${job.id}/download/`;
+      startDownload(downloadUrl);
+      const finished: FinishedRun = {
+        documentId: document.id,
+        fileName: downloadName(document.name),
+        downloadUrl,
+        copies: job.copies_total,
+        totalPages: job.total_pages,
+      };
+      navigate("/done", { state: finished });
+    },
+    [document.id, document.name, navigate],
+  );
   const [width, height] = document.page_sizes[page - 1] ?? [595.28, 841.89];
 
   const selectRole = (target: PageRole) => {
@@ -146,7 +219,22 @@ function Workspace({ document }: { document: DocumentInfo }) {
           }}
         />
       </Box>
-      <ToolsPanel title={strings.placement.toolsLabel}>
+      <ToolsPanel
+        title={strings.placement.toolsLabel}
+        footer={
+          <RunFooter
+            copiesText={copiesText}
+            copiesValid={copiesValid}
+            maxCopies={maxCopies}
+            onCopiesChange={setCopiesText}
+            summary={summary}
+            copies={copies}
+            maxPages={limits?.max_output_pages ?? null}
+            disabled={!copiesValid || !startValid || generation !== null}
+            onNumberIt={numberIt}
+          />
+        }
+      >
         <ConfigSection
           settings={editor.config}
           onApply={(config) => dispatch({ type: "load", config })}
@@ -163,7 +251,27 @@ function Workspace({ document }: { document: DocumentInfo }) {
           onMarginChange={setMarginMm}
           dispatch={dispatch}
         />
+        <Divider sx={{ my: 2 }} />
+        <NumbersSection
+          numberFormat={numberFormat}
+          onFormatChange={(format) => dispatch({ type: "format", number_format: format })}
+          startText={startText}
+          startValid={startValid}
+          onStartChange={setStartText}
+          padToEven={padToEven}
+          onPadToEvenChange={setPadToEven}
+          sample={sample}
+        />
       </ToolsPanel>
+      {generation && (
+        <GenerationDialog
+          state={generation}
+          onJob={onJob}
+          onError={onError}
+          onDone={onDone}
+          onClose={() => setGeneration(null)}
+        />
+      )}
     </Box>
   );
 }

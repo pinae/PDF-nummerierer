@@ -42,6 +42,11 @@ a regression test that reproduces the bug.
 - `make lint` — ruff, Prettier, ESLint, tsc; `make format` auto-fixes
 - `make check` — everything CI runs (lint + test + e2e)
 
+Make targets that need node_modules depend on `node_modules/.yarn-state.yml`
+and reinstall when a manifest or `yarn.lock` is newer, so a pull that adds a
+package cannot break `make test`/`make lint`. Keep that prerequisite on every
+new target that runs yarn.
+
 Run the relevant test target before every commit and `make check` before
 every push.
 

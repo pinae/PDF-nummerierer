@@ -62,6 +62,11 @@ Install everything:
 make install
 ```
 
+After pulling new commits, the `make` targets install new dependencies by
+themselves: frontend packages whenever `yarn.lock` or a `package.json` changed,
+Python packages through `uv run`. If you call `yarn` directly instead, run
+`yarn install` first.
+
 Start backend (http://127.0.0.1:8000) and frontend (http://localhost:5173)
 together, then open http://localhost:5173:
 

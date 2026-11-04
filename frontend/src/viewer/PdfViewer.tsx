@@ -65,6 +65,8 @@ export interface PdfViewerProps {
   onPageChange: (page: number) => void;
   /** Rendered on top of the page, exactly covering it. */
   renderOverlay?: (info: OverlayInfo) => ReactNode;
+  /** Show the First/Odd/Even/Last jump buttons (the workspace has its own role selector). */
+  showJumps?: boolean;
 }
 
 const JUMPS: { key: "first" | PageRole | "last"; role?: PageRole }[] = [
@@ -80,6 +82,7 @@ export function PdfViewer({
   page,
   onPageChange,
   renderOverlay,
+  showJumps = true,
 }: PdfViewerProps) {
   const [zoom, setZoom] = useState<Zoom>({ kind: "fit-page" });
   const [viewportRef, viewport] = useElementSize<HTMLDivElement>();
@@ -159,21 +162,23 @@ export function PdfViewer({
           </IconButton>
         </Box>
 
-        <ButtonGroup size="small" variant="outlined">
-          {JUMPS.map(({ key, role }) => {
-            const target = role ? firstPageOfRole(role, pageCount) : pageCount;
-            return (
-              <Button
-                key={key}
-                aria-label={text.jump[key]}
-                disabled={target === null}
-                onClick={() => target !== null && go(target)}
-              >
-                {text.jumpText[key]}
-              </Button>
-            );
-          })}
-        </ButtonGroup>
+        {showJumps && (
+          <ButtonGroup size="small" variant="outlined">
+            {JUMPS.map(({ key, role }) => {
+              const target = role ? firstPageOfRole(role, pageCount) : pageCount;
+              return (
+                <Button
+                  key={key}
+                  aria-label={text.jump[key]}
+                  disabled={target === null}
+                  onClick={() => target !== null && go(target)}
+                >
+                  {text.jumpText[key]}
+                </Button>
+              );
+            })}
+          </ButtonGroup>
+        )}
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: { md: "auto" } }}>
           <ToggleButtonGroup

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP7 done (backend complete; upload screen and PDF viewer working).** Next: WP8 (placement tools). This document is the
+Status: **WP0–WP8 done (backend complete; upload, viewer and placement working).** Next: WP9 (config management UI). This document is the
 binding plan for all work packages.
 
 ---
@@ -506,6 +506,23 @@ drag and click-to-move update state; arrow-key nudge (1/10 pt) and Escape
 cancel; mm fields two-way sync; marker renders widest serial in correct
 font/size; live preview appears on all matching pages.
 *This is the heart of the app — budget accordingly.*
+*Status: done.* A First page | Odd pages | Even pages selector above the
+preview jumps to the first page of that type and follows the page shown; it
+replaces the viewer's jump buttons in the workspace. The marker is an SVG
+`<text>` positioned at its baseline (exactly the PDF semantics) in the bundled
+TTF at true size. Moving it: drag (Escape cancels), click on the page (centres
+the number there; on a switched-off page type it switches it on), arrow keys
+(1 pt, Shift 10 pt), a 3 × 3 preset grid with a margin (default 10 mm), nudge
+buttons (1 mm, for touch screens) and exact mm fields (from left / from bottom
+to the baseline start), all kept in sync. Per page type: on/off switch (off
+remembers the position), font and size; "Use for all pages" copies one page
+type's settings. Defaults: all page types on, top right, 10 mm margin,
+Computer Modern 12 pt. On phones the settings panel starts collapsed below the
+preview. Not built: snapping to centre/anchors (presets and mm fields cover
+aligned positions). Verified once by hand: the ink of the number in the
+browser preview and in the generated PDF (rendered by PDFium) agree within
+one screen pixel for CMU Serif, DejaVu Sans and Caveat; WP11 turns this into
+an automated test.
 
 **WP9 — Config management UI.**
 Tests first: load + apply config previews instantly; save-as-new vs
@@ -519,6 +536,9 @@ polling; browser download; post-download deleted-confirmation + Delete now;
 restart flow.
 
 **WP11 — E2E suite (Playwright).**
+Preview-equals-output test: place the number in the browser, generate the PDF
+with the same settings, render it, and compare the ink positions (done by hand
+in WP8, to be automated).
 Whole happy path on desktop viewport **and** phone viewport (upload → place on
 all three classes → save config → reload-and-reselect config → generate 3
 copies → download → verify the downloaded PDF's page count and stamped text

@@ -49,10 +49,10 @@ test.describe("PDF viewer", () => {
 
     await page.getByRole("button", { name: "Next page" }).click();
     await expect(pageIndicator(page)).toContainText("Page 2 of 3");
-    await page.getByRole("button", { name: "Last page" }).click();
+    await page.getByRole("button", { name: /^Odd pages/ }).click();
     await expect(pageIndicator(page)).toContainText("Page 3 of 3");
     await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled();
-    await page.getByRole("button", { name: "First even page" }).click();
+    await page.getByRole("button", { name: /^Even pages/ }).click();
     await expect(pageIndicator(page)).toContainText("Page 2 of 3");
   });
 

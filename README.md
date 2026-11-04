@@ -9,7 +9,8 @@ need and download one print-ready PDF that contains all numbered copies.
 > stamping library (WP1), the document upload API (WP2), the saved
 > configurations API (WP3) and generation with download (WP4). The backend is
 > complete; the web interface has its foundation (WP5: theme, routing, API
-> client), the upload screen (WP6) and the PDF viewer (WP7); the placement tools are next. The web features below are being implemented package
+> client), the upload screen (WP6), the PDF viewer (WP7) and the placement
+> tools (WP8); saving configurations and generating from the UI are next. The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage

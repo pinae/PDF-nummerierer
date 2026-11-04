@@ -62,21 +62,19 @@ class NumberFormatSerializer(serializers.Serializer):
         return NumberFormat(attrs["prefix"], attrs["digits"], attrs["suffix"])
 
 
-class ConfigSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=MAX_NAME_LENGTH)
+class StampConfigSerializer(serializers.Serializer):
+    """Number format + placements, validated into a stamping.StampConfig."""
+
     number_format = NumberFormatSerializer(required=False)
     placements = PlacementsSerializer()
 
-    def validate_name(self, value: str) -> str:
-        return _printable(value)
-
-    def validate(self, attrs) -> dict:
+    def stamp_config(self, attrs) -> StampConfig:
         config = StampConfig(
             placements=attrs["placements"],
             number_format=attrs.get("number_format", NumberFormat()),
         )
         self._check_characters(config)
-        return {"name": attrs["name"], "stamp_config": config}
+        return config
 
     @staticmethod
     def _check_characters(config: StampConfig) -> None:
@@ -92,6 +90,16 @@ class ConfigSerializer(serializers.Serializer):
                     )
         if errors:
             raise serializers.ValidationError({"number_format": errors})
+
+
+class ConfigSerializer(StampConfigSerializer):
+    name = serializers.CharField(max_length=MAX_NAME_LENGTH)
+
+    def validate_name(self, value: str) -> str:
+        return _printable(value)
+
+    def validate(self, attrs) -> dict:
+        return {"name": attrs["name"], "stamp_config": self.stamp_config(attrs)}
 
 
 def config_payload(config: NumberingConfig) -> dict:

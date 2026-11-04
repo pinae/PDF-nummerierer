@@ -42,3 +42,11 @@ def env_int(name: str, default: int, *, minimum: int = 1) -> int:
     if value < minimum:
         raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {value}.")
     return value
+
+
+def env_choice(name: str, default: str, choices: set[str]) -> str:
+    value = os.environ.get(name, default)
+    if value not in choices:
+        allowed = ", ".join(sorted(choices))
+        raise ImproperlyConfigured(f"{name} must be one of {allowed}, got {value!r}.")
+    return value

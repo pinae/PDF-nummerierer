@@ -9,7 +9,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-from .env import env_bool, env_int, env_list, env_str
+from .env import env_bool, env_choice, env_int, env_list, env_str
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -32,6 +32,13 @@ PDFNUM_MAX_UPLOAD_BYTES = env_int("PDFNUM_MAX_UPLOAD_BYTES", 500 * 1024 * 1024)
 PDFNUM_RETENTION_SECONDS = env_int("PDFNUM_RETENTION_SECONDS", 2 * 60 * 60)
 PDFNUM_UPLOAD_RATE = env_str("PDFNUM_UPLOAD_RATE", "60/hour")
 PDFNUM_CONFIG_SAVE_RATE = env_str("PDFNUM_CONFIG_SAVE_RATE", "60/hour")
+PDFNUM_MAX_COPIES = env_int("PDFNUM_MAX_COPIES", 9999)
+# Protects memory: the output is assembled in memory before it is written.
+PDFNUM_MAX_OUTPUT_PAGES = env_int("PDFNUM_MAX_OUTPUT_PAGES", 100_000)
+PDFNUM_GENERATION_WORKERS = env_int("PDFNUM_GENERATION_WORKERS", 2)
+PDFNUM_GENERATION_RUNNER = env_choice("PDFNUM_GENERATION_RUNNER", "thread", {"thread", "immediate"})
+# Running jobs without progress for this long are marked as interrupted.
+PDFNUM_JOB_TIMEOUT_SECONDS = env_int("PDFNUM_JOB_TIMEOUT_SECONDS", 30 * 60)
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -40,6 +47,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "documents",
     "configs",
+    "generation",
 ]
 
 MIDDLEWARE = [
@@ -68,6 +76,12 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DATA_DIR / "db.sqlite3",
+        # The generation worker thread writes progress while requests are served.
+        "OPTIONS": {
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+            "transaction_mode": "IMMEDIATE",
+            "timeout": 20,
+        },
     }
 }
 

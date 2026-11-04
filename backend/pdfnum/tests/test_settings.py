@@ -14,6 +14,11 @@ ENV_VARS = [
     "PDFNUM_SECURE_COOKIES",
     "PDFNUM_UPLOAD_RATE",
     "PDFNUM_CONFIG_SAVE_RATE",
+    "PDFNUM_JOB_TIMEOUT_SECONDS",
+    "PDFNUM_GENERATION_RUNNER",
+    "PDFNUM_GENERATION_WORKERS",
+    "PDFNUM_MAX_OUTPUT_PAGES",
+    "PDFNUM_MAX_COPIES",
     "PDFNUM_RETENTION_SECONDS",
     "PDFNUM_MAX_UPLOAD_BYTES",
 ]
@@ -165,3 +170,26 @@ def test_config_save_rate(load_settings):
     assert load_settings(PDFNUM_SECRET_KEY="x" * 50).PDFNUM_CONFIG_SAVE_RATE == "60/hour"
     settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_CONFIG_SAVE_RATE="3/minute")
     assert settings.PDFNUM_CONFIG_SAVE_RATE == "3/minute"
+
+
+def test_generation_limits(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert settings.PDFNUM_MAX_COPIES == 9999
+    assert settings.PDFNUM_MAX_OUTPUT_PAGES == 100_000
+    assert settings.PDFNUM_GENERATION_WORKERS == 2
+    assert settings.PDFNUM_GENERATION_RUNNER == "thread"
+    assert settings.PDFNUM_JOB_TIMEOUT_SECONDS == 30 * 60
+
+
+def test_unknown_generation_runner_is_rejected(load_settings):
+    with pytest.raises(ImproperlyConfigured, match="PDFNUM_GENERATION_RUNNER"):
+        load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_GENERATION_RUNNER="celery")
+
+
+def test_sqlite_is_tuned_for_a_background_worker(load_settings):
+    options = load_settings(PDFNUM_SECRET_KEY="x" * 50).DATABASES["default"]["OPTIONS"]
+
+    assert "journal_mode=WAL" in options["init_command"]
+    assert options["transaction_mode"] == "IMMEDIATE"
+    assert options["timeout"] >= 20

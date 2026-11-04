@@ -6,8 +6,9 @@ the number visually on the first, odd and even pages, choose how many copies you
 need and download one print-ready PDF that contains all numbered copies.
 
 > **Status:** under development. Done: project scaffolding (WP0), the PDF
-> stamping library (WP1), the document upload API (WP2) and the saved
-> configurations API (WP3). The web features below are being implemented package
+> stamping library (WP1), the document upload API (WP2), the saved
+> configurations API (WP3) and generation with download (WP4). The backend is
+> complete; the web interface is next. The web features below are being implemented package
 > by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage
@@ -168,8 +169,26 @@ The backend is configured with environment variables:
 | `PDFNUM_RETENTION_SECONDS` | `7200` (2 hours) | Uploaded and generated PDFs are deleted at the latest after this time; also the session lifetime |
 | `PDFNUM_UPLOAD_RATE` | `60/hour` | Uploads allowed per client IP (`N/second`, `N/minute`, `N/hour`, `N/day`) |
 | `PDFNUM_CONFIG_SAVE_RATE` | `60/hour` | Saved configurations allowed per client IP (same format) |
+| `PDFNUM_MAX_COPIES` | `9999` | Most copies per run |
+| `PDFNUM_MAX_OUTPUT_PAGES` | `100000` | Most pages in one generated PDF (copies × pages per copy); bounds memory use |
+| `PDFNUM_GENERATION_WORKERS` | `2` | Generation jobs running in parallel per server process |
+| `PDFNUM_GENERATION_RUNNER` | `thread` | `thread` (background thread pool) or `immediate` (inside the request; tests only) |
+| `PDFNUM_JOB_TIMEOUT_SECONDS` | `1800` | Jobs without progress for this long are reported as interrupted |
 
 Boolean variables accept `1/0`, `true/false` or `on/off`.
+
+### Cleanup
+
+Expired uploads and generated PDFs are removed by a periodic job. Run it every
+few minutes (the Docker setup will schedule it):
+
+```bash
+cd backend && uv run python manage.py cleanup
+```
+
+It deletes expired documents with their generated PDFs, expired sessions and
+abandoned temporary files, and reports generation jobs that were interrupted
+(for example by a server restart).
 
 ## Updating dependencies
 

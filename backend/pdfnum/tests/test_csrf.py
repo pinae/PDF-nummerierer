@@ -85,3 +85,17 @@ def test_saving_a_config_without_token_is_rejected(strict_client):
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_starting_a_generation_without_token_is_rejected(strict_client):
+    token = csrf_token(strict_client)
+    document_id = upload(strict_client, HTTP_X_CSRFTOKEN=token).json()["id"]
+
+    response = strict_client.post(
+        f"/api/documents/{document_id}/generate/",
+        {"copies": 1, "placements": {}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 403

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP3 done.** Next: WP4 (or the frontend packages). This document is the
+Status: **WP0–WP4 done (backend complete).** Next: WP5 (frontend foundation). This document is the
 binding plan for all work packages.
 
 ---
@@ -179,16 +179,18 @@ Document
   page_sizes  JSON           # [w_pt, h_pt] per page as displayed, for the frontend
   created_at  datetime       # drives expiry (expires_at = created_at + TTL)
 
-GenerationJob
+GenerationJob                 # lives exactly as long as its document (cascade)
   id          UUID pk
   document    FK → Document
   owner       str            # same owner token as the document
   status      enum {pending, running, done, failed}
+  stage       str            # preparing | stamping | writing | done
   copies_total / copies_done  int      # determinate progress
-  params      JSON           # resolved config snapshot + copies + start number
-                             # + pad_to_even (duplex padding, default true)
-  output_file FileField
-  created_at / finished_at
+  total_pages int
+  params      JSON           # config snapshot + start + pad_to_even
+  output      FileField      # MEDIA_ROOT/outputs/<id>.pdf, mode 0600
+  error_code / error_message # generation_failed | interrupted
+  created_at / updated_at (worker heartbeat) / finished_at
 ```
 
 Coordinates are stored and transmitted in **PDF points** end to end. A
@@ -259,9 +261,9 @@ config; the newest spelling is shown). Configs cannot be changed or deleted
 through the API: they are shared by everybody without login, so nobody can
 destroy someone else's config. Saving is throttled per IP
 (`PDFNUM_CONFIG_SAVE_RATE`, default 60/hour).
-| `POST /api/documents/{uuid}/generate/` | `{config, copies, start}` → `{job_id}` |
-| `GET  /api/jobs/{uuid}/` | `{status, copies_done, copies_total}` for polling |
-| `GET  /api/jobs/{uuid}/download/` | the final PDF; schedules deletion afterwards |
+| `POST /api/documents/{uuid}/generate/` | `{number_format, placements, copies, start = 1, pad_to_even = true}` (the current, possibly unsaved config) → 202 + job payload |
+| `GET  /api/jobs/{uuid}/` | job payload for polling: `{id, document_id, status, stage, copies_done, copies_total, total_pages, error, download_url, created_at, finished_at}` |
+| `GET  /api/jobs/{uuid}/download/` | the joined PDF as attachment `<upload name>-numbered.pdf`; once the last byte is sent, document, job and both files are deleted (an aborted download deletes nothing, so it can be retried) |
 
 Errors always have the shape `{"error": {"code": "...", "message": "..."}}`
 with a stable `code` for the frontend and an English `message` for humans.
@@ -271,8 +273,25 @@ Upload codes: `missing_file`, `too_large` (413), `not_pdf`, `invalid_pdf`,
 `"fields": {"placements.first.font_size": ["message", ...], ...}` with dotted
 paths into the request body, so the UI can highlight the exact input.
 
-Generation runs in an in-process worker thread (a departmental tool doesn't
-need Celery/Redis); the job row carries determinate progress ("copy 37 of 200").
+Generation runs in an in-process thread pool (`PDFNUM_GENERATION_WORKERS`,
+default 2; a departmental tool doesn't need Celery/Redis). The job row carries
+determinate progress ("copy 37 of 200"), written at most twice a second and on
+every stage change. Limits checked before a job starts: at most
+`PDFNUM_MAX_COPIES` (9999) copies and `PDFNUM_MAX_OUTPUT_PAGES` (100,000)
+output pages per run (memory), enough free disk space, and one active job per
+session. Deleting the document ("Delete now") cancels a running job. SQLite runs
+in WAL mode with `BEGIN IMMEDIATE` transactions so the worker thread and
+requests do not block each other.
+
+Generation error codes: `too_many_pages` (400), `job_running` (409),
+`insufficient_storage` (507), `not_ready` (409, download before done); a job
+itself can end with `generation_failed` or `interrupted`.
+
+**Cleanup**: `manage.py cleanup` (run every few minutes by cron/compose in
+production) deletes expired documents with their jobs and files, expired
+sessions, orphaned and abandoned temporary files, and marks jobs without a
+worker heartbeat for `PDFNUM_JOB_TIMEOUT_SECONDS` as `interrupted` (e.g. after
+a restart). Expired documents are also purged at the start of every upload.
 
 ### Security model (no authentication, hostile students assumed)
 
@@ -435,6 +454,7 @@ triggers deletion of upload+output+rows; failed generation reports `failed`
 with message; TTL cleanup command removes expired documents/jobs and files;
 opportunistic cleanup hook.
 *Acceptance: after a completed download the media directory is empty for that session.*
+*Status: done.*
 
 **WP5 — Frontend foundation.**
 Tests first (Vitest/RTL): theme switches with `prefers-color-scheme`; API

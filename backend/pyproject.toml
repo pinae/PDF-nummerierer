@@ -1,0 +1,40 @@
+[project]
+name = "pdfnum-backend"
+version = "0.1.0"
+description = "Django backend of PDF-Nummerierer: stamps serial numbers onto exam PDFs."
+readme = "../README.md"
+requires-python = ">=3.14"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "django>=6.1.3,<6.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2",
+    "pytest-cov>=7.1",
+    "pytest-django>=4.14",
+    "ruff>=0.17.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "pdfnum.settings_test"
+python_files = ["test_*.py"]
+addopts = "--strict-markers --strict-config"
+testpaths = ["."]
+norecursedirs = [".venv", "var", "node_modules"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+extend-exclude = ["var"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "PT", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106"]
+"**/test_*.py" = ["S101", "S105", "S106"]

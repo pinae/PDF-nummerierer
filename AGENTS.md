@@ -31,17 +31,26 @@ a regression test that reproduces the bug.
   via corepack** — never use npm or pnpm, never delete `yarn.lock`.
 - `e2e/` — Playwright tests against the real stack.
 
-## Commands (via the root Makefile once WP0 lands)
+## Commands (root Makefile; `make help` lists all)
 
-- `make dev` — run backend (:8000) and frontend (:5173, proxies /api) together
+- `make install` — `uv sync` for the backend + `yarn install` for the workspaces
+- `make dev` — backend (:8000, `PDFNUM_DEBUG=1`) and frontend (:5173, proxies /api)
 - `make test` — all backend + frontend tests
 - `make test-backend` — `cd backend && uv run pytest`
-- `make test-frontend` — `cd frontend && yarn test`
-- `make e2e` — Playwright suite
-- `make lint` — all linters/formatters
+- `make test-frontend` — `yarn workspace frontend test`
+- `make e2e` — Playwright suite (starts its own servers on :8765 / :4173)
+- `make lint` — ruff, Prettier, ESLint, tsc; `make format` auto-fixes
+- `make check` — everything CI runs (lint + test + e2e)
 
-Run the relevant test target before every commit; run `make test` before every
-push.
+Run the relevant test target before every commit and `make check` before
+every push.
+
+Environment quirks you may hit in sandboxed/cloud containers:
+- If `yarn --version` prints 1.x, the Corepack shim is not enabled: use
+  `make … YARN="corepack yarn"`. If Corepack cannot reach repo.yarnpkg.com,
+  set `COREPACK_NPM_REGISTRY=https://registry.npmjs.org`.
+- If the preinstalled Chromium does not match the Playwright version, set
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to it instead of downloading browsers.
 
 ## Conventions
 

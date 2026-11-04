@@ -1,0 +1,9 @@
+node_modules
+.yarn
+dist
+coverage
+backend
+e2e/.data
+e2e/playwright-report
+e2e/test-results
+*.md

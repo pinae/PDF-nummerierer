@@ -1,0 +1,15 @@
+{
+  "name": "pdf-nummerierer",
+  "private": true,
+  "packageManager": "yarn@4.18.1",
+  "workspaces": [
+    "frontend",
+    "e2e"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}

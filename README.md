@@ -110,17 +110,22 @@ make format
 
 The Playwright tests start their own Django server (port 8765, fresh database
 in `e2e/.data/`) and a production build of the frontend (port 4173) and run on
-a desktop and a phone viewport. Download the browser once (and again after
-each Playwright update):
-
-```bash
-make e2e-install
-```
-
-Then run:
+a desktop and a phone viewport:
 
 ```bash
 make e2e
+```
+
+`make install` and `make e2e` download the Chromium build that matches the
+installed Playwright version automatically (a no-op when it is already
+there, and after a Playwright update they fetch the new one).
+
+If Chromium then fails to start because system libraries are missing
+(`error while loading shared libraries`), install them once (Debian/Ubuntu,
+asks for your sudo password):
+
+```bash
+make e2e-deps
 ```
 
 Everything CI runs (lint, unit tests, e2e):
@@ -213,8 +218,8 @@ yarn set version stable
 
 Notes:
 
-- After upgrading `@playwright/test`, run `make e2e-install` to fetch the
-  matching browser.
+- After upgrading `@playwright/test`, the next `make e2e` fetches the
+  matching browser automatically.
 - TypeScript is held at 6.0.x until `typescript-eslint` supports TypeScript 7
   (check its `typescript` peer dependency range before upgrading).
 - `@types/node` follows the oldest supported Node.js major (22), so the code

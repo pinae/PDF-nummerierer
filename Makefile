@@ -8,7 +8,7 @@ BACKEND := backend
 DEV_ENV := PDFNUM_DEBUG=1
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-backend install-frontend e2e-install \
+.PHONY: help install install-backend install-frontend e2e-browsers e2e-deps \
         dev dev-backend dev-frontend \
         test test-backend test-frontend e2e check \
         lint lint-backend lint-frontend format build clean
@@ -17,14 +17,24 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-install: install-backend install-frontend ## Install all dependencies
+install: install-backend install-frontend e2e-browsers ## Install all dependencies incl. the e2e browser
 install-backend:
 	cd $(BACKEND) && $(UV) sync
 install-frontend:
 	$(YARN) install
 
-e2e-install: ## Download the Playwright browser (once per Playwright update)
-	$(YARN) workspace e2e install-browsers
+# Downloads the Chromium build matching the installed Playwright version.
+# Idempotent and quick when the browser is already present. Skipped when
+# PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH points at an existing browser.
+e2e-browsers: ## Download Playwright's Chromium (automatic in install and e2e)
+ifeq ($(strip $(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)),)
+	$(YARN) workspace e2e playwright install chromium
+else
+	@echo "Using Chromium at $(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)"
+endif
+
+e2e-deps: ## Install system libraries Chromium needs (Debian/Ubuntu, uses sudo)
+	$(YARN) workspace e2e playwright install-deps chromium
 
 dev: ## Run backend (:8000) and frontend (:5173) together
 	$(MAKE) -j2 dev-backend dev-frontend
@@ -40,7 +50,7 @@ test-backend: ## Run backend tests (pytest)
 test-frontend: ## Run frontend tests (Vitest)
 	$(YARN) workspace frontend test
 
-e2e: ## Run Playwright end-to-end tests against the real stack
+e2e: e2e-browsers ## Run Playwright end-to-end tests against the real stack
 	$(YARN) workspace e2e test
 
 check: lint test e2e ## Everything CI runs

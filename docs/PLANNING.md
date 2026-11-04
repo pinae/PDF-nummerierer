@@ -4,8 +4,8 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **planning — implementation has not started.** This document is the
-basis for review before any code is written.
+Status: **WP0 (scaffolding & tooling) done.** Next: WP1. This document is the
+binding plan for all work packages.
 
 ---
 
@@ -14,8 +14,9 @@ basis for review before any code is written.
 A professor uploads an exam PDF. The browser shows the PDF (zoomable, pageable).
 The professor places the serial-number stamp visually — separately for the
 **first page**, **odd pages** (3, 5, 7, …) and **even pages** (2, 4, 6, …); each
-of the three placements is optional. Font and size come from a small list
-(Computer Modern Roman, Sans-Serif, Handwritten). The number itself is
+of the three placements is optional. Font and size come from a short list
+(fewer than 10 fonts: serif such as Computer Modern Roman, sans-serif and
+handwritten). The number itself is
 configurable: optional prefix and suffix, zero-padding width, start number
 (e.g. `Exam A – 0042`).
 
@@ -43,21 +44,32 @@ unguessable UUIDs so one user can never reach another user's exam.
 | Placements | First / odd / even each individually optional; a page without a placement gets no number. "Odd pages" means odd page numbers **excluding page 1** (page 1 has its own placement), matching the original script |
 | Number format | Configurable: prefix, zero-padding width, suffix; start number chosen per run (default 1) |
 | Deployment | Docker + docker-compose for production, plus local dev instructions |
+| Fonts | Fewer than 10 entries in total; several per category (serif, sans-serif, handwritten) are allowed. The list is data-driven (one registry module), so changing it needs no code changes elsewhere |
+| Duplex printing | **On by default**: each copy is padded with blank pages to an even page count, so in duplex printing no copy starts on the back of another copy's last page. A simple switch in the generation options turns it off |
+| UI language | English (strings stay centralized, so adding a translation later stays easy) |
+| Limits | Max upload **500 MB**, max **9999 copies** per run, retention TTL 2 hours (all adjustable via settings/env) |
 
-### Open questions (answer before or during the relevant work package)
+### Font list (proposal, 9 entries, all freely licensed and bundled)
 
-1. **Handwritten font**: proposal is [Caveat](https://fonts.google.com/specimen/Caveat)
-   (SIL OFL, clearly legible digits). Veto/alternative welcome. For Sans-Serif
-   the proposal is CMU Sans Serif so it visually matches Computer Modern; DejaVu
-   Sans would be the plainer alternative.
-2. **Blank-page padding**: your `add_blank_page.py` inserts a blank page. Should
-   the app offer "pad each copy to an even page count" (so duplex printing of the
-   joined PDF never bleeds one copy's last page onto the next copy's front)?
-   Cheap to add to the generation options if wanted.
-3. **UI language**: English or German? (Plan assumes English; strings will be
-   centralized so switching/adding German later is easy.)
-4. **Limits**: proposed defaults — max upload 50 MB, max 1000 copies per run,
-   retention TTL 2 hours. Adjustable in settings either way.
+| Category | Fonts |
+|---|---|
+| Serif | Computer Modern Roman (CMU Serif, as in the original script), Libertinus Serif, Noto Serif |
+| Sans-serif | CMU Sans Serif, Source Sans 3, DejaVu Sans |
+| Handwritten | Caveat, Patrick Hand, Indie Flower |
+
+All of these are under the SIL Open Font License or a similarly permissive font
+license, so they can be committed to the repository and served to the browser.
+The list can be changed until WP1, where the font registry is implemented.
+
+### Consequences of the limits
+
+A 500 MB upload multiplied by 9999 copies must not produce terabytes of output.
+The generator therefore must **reuse shared resources** (images, embedded fonts,
+form XObjects) across copies, so only the per-copy page content and the tiny
+number overlay are duplicated, and must **stream** the output to disk instead of
+holding it in memory. WP1 includes a test asserting that output size grows with
+pages, not with copies × input size, and WP4 checks free disk space before
+starting a job.
 
 ---
 
@@ -73,7 +85,7 @@ PDF-nummerierer/
 │   ├── documents/           # Django app: upload, preview file serving, deletion
 │   ├── configs/             # Django app: numbering configs (name + version)
 │   ├── generation/          # Django app: jobs, progress, download
-│   ├── fonts/               # bundled TTFs (CMU Serif, CMU Sans, Caveat)
+│   ├── fonts/               # bundled TTFs (see the font list in §1)
 │   ├── manage.py
 │   └── pyproject.toml
 ├── frontend/                # Vite + React + TypeScript + MUI, yarn 4
@@ -146,7 +158,7 @@ Placement                     # 0–3 rows per config
   config      FK → NumberingConfig
   role        enum {first, odd, even}   # unique per config
   x_pt, y_pt  float          # PDF points, origin bottom-left (like config.json)
-  font        enum {cmu-serif, cmu-sans, handwritten}
+  font        str            # id from the font registry, e.g. "cmu-serif"
   font_size   float
 
 Document
@@ -164,6 +176,7 @@ GenerationJob
   status      enum {pending, running, done, failed}
   copies_total / copies_done  int      # determinate progress
   params      JSON           # resolved config snapshot + copies + start number
+                             # + pad_to_even (duplex padding, default true)
   output_file FileField
   created_at / finished_at
 ```
@@ -280,9 +293,12 @@ workspace → download*.
 ### Fonts
 Bundled in the repo (all freely licensed), used identically by reportlab (TTF)
 and the browser preview (@font-face), so preview = output:
-- Computer Modern Roman → CMU Serif (`cmunrm.ttf`, as in the original script)
-- Sans-Serif → CMU Sans Serif (proposal, see open question 1)
-- Handwritten → Caveat (proposal, see open question 1)
+- Serif → CMU Serif (Computer Modern Roman, `cmunrm.ttf` as in the original
+  script), Libertinus Serif, Noto Serif
+- Sans-serif → CMU Sans Serif, Source Sans 3, DejaVu Sans
+- Handwritten → Caveat, Patrick Hand, Indie Flower
+
+The font picker groups entries by category (serif / sans-serif / handwritten).
 
 ---
 
@@ -298,6 +314,7 @@ scaffold; pytest/Vitest/Playwright wired; `Makefile` targets `dev`, `test`,
 `test-backend`, `test-frontend`, `e2e`, `lint`; GitHub Actions running all three
 suites; README skeleton (usage, running tests, updating dependencies).
 *Acceptance: `make test` and `make e2e` run (trivial smoke tests) locally and in CI.*
+*Status: done.*
 
 **WP1 — Core stamping library (`backend/stamping/`, pure Python).**
 Tests first against generated fixture PDFs (ports of `create_dummy.py` /
@@ -305,8 +322,11 @@ Tests first against generated fixture PDFs (ports of `create_dummy.py` /
 overlay creation with embedded fonts; page-class resolution (first/odd/even,
 odd excludes page 1); form-field transparency handling (from
 `make_annots_transparent`); stamping one copy; generating + concatenating N
-copies with a progress callback; correct behavior for pages without a
-placement, odd page sizes, rotated pages.
+copies with a progress callback; duplex padding (blank page appended to
+odd-length copies, on by default, page size matching the copy's last page);
+font registry (fewer than 10 entries, each with category and bundled TTF);
+shared resources written once across copies (output size test); correct
+behavior for pages without a placement, odd page sizes, rotated pages.
 *Acceptance: library reproduces the original script's output semantics; no Django import.*
 
 **WP2 — Documents API.**
@@ -362,7 +382,8 @@ Tests first: load + apply config previews instantly; save-as-new vs
 save-new-version flows; dirty-state indicator ("modified since load").
 
 **WP10 — Generate & download flow.**
-Tests first: copies/start/prefix/suffix inputs with live sample; summary before
+Tests first: copies/start/prefix/suffix inputs with live sample; duplex-padding
+switch (on by default) reflected in the page-count summary; summary before
 the expensive step ("200 copies, ~1800 pages"); staged determinate progress via
 polling; browser download; post-download deleted-confirmation + Delete now;
 restart flow.

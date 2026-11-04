@@ -74,3 +74,10 @@ export interface Job {
   created_at: string;
   finished_at: string | null;
 }
+
+export interface Limits {
+  max_upload_bytes: number;
+  retention_seconds: number;
+  max_copies: number;
+  max_output_pages: number;
+}

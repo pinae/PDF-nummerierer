@@ -7,6 +7,7 @@ from . import views
 urlpatterns = [
     path("api/health/", views.health, name="health"),
     path("api/csrf/", views.csrf, name="csrf"),
+    path("api/limits/", views.limits, name="limits"),
     path(
         "api/documents/<uuid:document_id>/generate/",
         generation_views.GenerateView.as_view(),

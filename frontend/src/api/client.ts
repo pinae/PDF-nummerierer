@@ -39,7 +39,8 @@ export function readCookie(name: string): string | undefined {
   return undefined;
 }
 
-async function csrfToken(): Promise<string> {
+/** The CSRF token from its cookie; asks the backend to set the cookie first if needed. */
+export async function ensureCsrfToken(): Promise<string> {
   if (!readCookie(CSRF_COOKIE)) {
     await apiRequest("/api/csrf/");
   }
@@ -50,7 +51,7 @@ interface ErrorBody {
   error?: { code?: unknown; message?: unknown; fields?: unknown };
 }
 
-function toApiError(status: number, data: unknown): ApiError {
+export function toApiError(status: number, data: unknown): ApiError {
   const error = (data as ErrorBody | undefined)?.error;
   if (error && typeof error.code === "string") {
     return new ApiError(
@@ -79,7 +80,7 @@ export async function apiRequest<T = unknown>(
     body = JSON.stringify(options.json);
   }
   if (method !== "GET") {
-    headers.set("X-CSRFToken", await csrfToken());
+    headers.set("X-CSRFToken", await ensureCsrfToken());
   }
 
   let response: Response;

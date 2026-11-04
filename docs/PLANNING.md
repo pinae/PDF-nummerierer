@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP5 done (backend complete, frontend foundation in place).** Next: WP6 (upload screen). This document is the
+Status: **WP0–WP6 done (backend complete, upload screen working).** Next: WP7 (PDF viewer). This document is the
 binding plan for all work packages.
 
 ---
@@ -231,6 +231,7 @@ The UI *displays* positions in millimetres.
 | Method & path | Purpose |
 |---|---|
 | `GET  /api/csrf/` | sets CSRF cookie for the SPA |
+| `GET  /api/limits/` | `{max_upload_bytes, retention_seconds, max_copies, max_output_pages}`, so the UI states the limits up front |
 | `POST /api/documents/` | multipart upload (field `file`) → document payload (201) |
 | `GET  /api/documents/{uuid}/` | document payload: `{id, name, size, page_count, page_sizes, created_at, expires_at}` |
 | `GET  /api/documents/{uuid}/file/` | the PDF for preview (owner-checked, `nosniff`, `no-store`) |
@@ -474,6 +475,11 @@ cookie first if needed) and turns every failure into an `ApiError` with
 Tests first: dropzone accept/reject states, limit + retention copy visible
 pre-upload, upload progress, specific error rendering per backend error code,
 navigation to workspace on success.
+*Status: done.* Limits and the deletion promise come from `/api/limits/` and
+are shown before upload; non-PDFs, several files and oversized files are
+rejected in the browser before any byte is sent; the upload uses
+XMLHttpRequest for determinate progress and can be cancelled; every server
+error code has its own explanation. The drag hint is hidden on touch devices.
 
 **WP7 — PDF viewer.**
 Tests first (coordinate utilities as pure functions; viewer behavior with

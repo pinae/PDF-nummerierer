@@ -5,6 +5,7 @@ import type {
   FontInfo,
   GenerationRequest,
   Job,
+  Limits,
   NumberingConfig,
 } from "./types";
 
@@ -36,3 +37,5 @@ export const startGeneration = (documentId: string, request: GenerationRequest) 
   });
 
 export const getJob = (jobId: string) => apiRequest<Job>(`/api/jobs/${segment(jobId)}/`);
+
+export const getLimits = () => apiRequest<Limits>("/api/limits/");

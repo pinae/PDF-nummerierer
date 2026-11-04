@@ -1,0 +1,45 @@
+# Production setup behind Traefik. Copy .env.example to .env and fill it in, then:
+#   docker compose up -d --build
+# See README, "Deployment", for the Traefik settings large uploads need.
+name: pdf-nummerierer
+
+services:
+  web:
+    build: .
+    image: pdf-nummerierer:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PDFNUM_TRUST_PROXY: "1"
+    volumes:
+      - data:/data
+    networks:
+      - traefik
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
+      traefik.http.routers.pdf-nummerierer.rule: Host(`${PDFNUM_HOST:?set PDFNUM_HOST in .env}`)
+      traefik.http.routers.pdf-nummerierer.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.pdf-nummerierer.tls: "true"
+      traefik.http.routers.pdf-nummerierer.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.services.pdf-nummerierer.loadbalancer.server.port: "8000"
+
+  cleanup:
+    image: pdf-nummerierer:latest
+    command: cleanup
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - data:/data
+    network_mode: none
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  data:
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

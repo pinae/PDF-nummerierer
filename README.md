@@ -5,15 +5,9 @@ multi-page exam can never be mixed up between students. Upload the exam, place
 the number visually on the first, odd and even pages, choose how many copies you
 need and download one print-ready PDF that contains all numbered copies.
 
-> **Status:** under development. Done: project scaffolding (WP0), the PDF
-> stamping library (WP1), the document upload API (WP2), the saved
-> configurations API (WP3) and generation with download (WP4). The backend is
-> complete; the web interface has its foundation (WP5: theme, routing, API
-> client), the upload screen (WP6), the PDF viewer (WP7) and the placement
-> tools (WP8), saved configurations (WP9) and generating with download (WP10):
-> the complete flow works and is covered end to end (WP11). Next: production
-> packaging with Docker behind Traefik (WP12). The web features below are being implemented package
-> by package following [`docs/PLANNING.md`](docs/PLANNING.md).
+> **Status:** feature complete (work packages WP0–WP12 in
+> [`docs/PLANNING.md`](docs/PLANNING.md)); runs in production as a Docker image
+> behind Traefik, see [Deployment](#deployment).
 
 ## Usage
 
@@ -45,6 +39,7 @@ No account is needed.
 | `backend/stamping/` | Framework-free PDF stamping library and the bundled fonts |
 | `frontend/` | React 19 + TypeScript + MUI single-page app (Vite) |
 | `e2e/` | Playwright end-to-end tests against the real stack |
+| `Dockerfile`, `docker/`, `docker-compose*.yml`, `.env.example` | Production image and deployment behind Traefik |
 | `docs/PLANNING.md` | Architecture, security model, UX design and work packages |
 | `AGENTS.md`, `CLAUDE.md` | Working rules for AI coding agents |
 
@@ -142,6 +137,13 @@ asks for your sudo password):
 make e2e-deps
 ```
 
+The same suite against gunicorn serving the built app, exactly as in the
+Docker image (WhiteNoise, app shell, Content Security Policy):
+
+```bash
+make e2e-production
+```
+
 Everything CI runs (lint, unit tests, e2e):
 
 ```bash
@@ -186,6 +188,10 @@ The backend is configured with environment variables:
 | `PDFNUM_GENERATION_WORKERS` | `2` | Generation jobs running in parallel per server process |
 | `PDFNUM_GENERATION_RUNNER` | `thread` | `thread` (background thread pool) or `immediate` (inside the request; tests only) |
 | `PDFNUM_JOB_TIMEOUT_SECONDS` | `1800` | Jobs without progress for this long are reported as interrupted |
+| `PDFNUM_TRUST_PROXY` | `0` | `1` behind a TLS-terminating reverse proxy such as Traefik: trust `X-Forwarded-Proto` and one `X-Forwarded-For` entry |
+| `PDFNUM_HSTS_SECONDS` | `0` | Send `Strict-Transport-Security` for this many seconds (0 = off) |
+| `PDFNUM_CSRF_TRUSTED_ORIGINS` | — | Comma-separated extra origins allowed to send forms (normally not needed) |
+| `PDFNUM_FRONTEND_DIR` | `frontend/dist` | Built frontend served by Django in production |
 
 Boolean variables accept `1/0`, `true/false` or `on/off`.
 
@@ -265,6 +271,119 @@ Notes:
 
 The workflow in `.github/workflows/ci.yml` pins action versions; bump them
 when new major versions are released.
+
+## Deployment
+
+The app ships as one Docker image: Django under gunicorn, serving the built
+frontend itself. `docker-compose.yml` runs it behind
+[Traefik](https://traefik.io/), which terminates TLS. A second container from
+the same image runs the cleanup every five minutes.
+
+### Set up
+
+Requirements: Docker with Compose, and a running Traefik that watches Docker,
+with an HTTPS entrypoint and a certificate resolver.
+
+1. Copy the example settings and fill them in:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   At least `PDFNUM_HOST`, `PDFNUM_ALLOWED_HOSTS`, `PDFNUM_SECRET_KEY` and the
+   three `TRAEFIK_*` values (network, entrypoint and certificate resolver of
+   your Traefik). A secret key can be generated with:
+
+   ```bash
+   python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+
+2. Build and start:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. Open `https://<PDFNUM_HOST>/`.
+
+### Traefik settings for large uploads
+
+Exams can be up to 500 MB. Two Traefik settings matter:
+
+- **Read timeout.** Traefik's entrypoints cut off requests that take longer
+  than 60 seconds to read by default, which a large upload on a slow connection
+  can exceed. Raise it in Traefik's static configuration, e.g.:
+
+  ```yaml
+  entryPoints:
+    websecure:
+      transport:
+        respondingTimeouts:
+          readTimeout: 600s
+  ```
+
+- **Body size.** Traefik does not limit request bodies by default. If you use
+  a buffering middleware anyway, set its `maxRequestBodyBytes` to at least
+  `525336576` (500 MB plus 1 MB for the form data). The app itself refuses
+  larger uploads.
+
+The compose file sets `PDFNUM_TRUST_PROXY=1`: Django then trusts Traefik's
+`X-Forwarded-Proto` (HTTPS detection) and exactly one `X-Forwarded-For` entry
+(the client IP for rate limiting). Only use it when the app is reachable
+exclusively through the proxy, which is the case in this setup (the container
+publishes no port).
+
+### Running it
+
+- **Data**: the `data` volume holds the SQLite database (saved
+  configurations), uploads and generated PDFs while they exist, and the
+  rate-limit cache. Back it up for the saved configurations; uploads and
+  outputs are deleted within the retention time anyway.
+- **Update** to a new version:
+
+  ```bash
+  git pull
+  ```
+
+  ```bash
+  docker compose up -d --build
+  ```
+
+  Database migrations run automatically when the app container starts.
+- **Logs**:
+
+  ```bash
+  docker compose logs -f web
+  ```
+
+- **Size**: `GUNICORN_WORKERS` processes (default 2), each running up to
+  `PDFNUM_GENERATION_WORKERS` generation jobs (default 2). A job for 100,000
+  output pages needs about 1 GB of memory.
+- **Security checks**: `python manage.py check --deploy` inside the container
+  warns that `SECURE_SSL_REDIRECT` is off; that is intended, Traefik redirects
+  HTTP to HTTPS. `PDFNUM_HSTS_SECONDS` enables HSTS: start with a small value
+  and raise it to a year once HTTPS works.
+
+### Try the image locally
+
+Without Traefik, on http://localhost:8000:
+
+```bash
+cp .env.example .env
+```
+
+Set `PDFNUM_SECRET_KEY` in `.env`, then:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+```
+
+The end-to-end tests can run against any deployment. Give it a high upload
+rate first (`PDFNUM_UPLOAD_RATE=1000/hour`), the suite uploads many PDFs:
+
+```bash
+E2E_BASE_URL=http://localhost:8000 make e2e
+```
 
 ## License
 

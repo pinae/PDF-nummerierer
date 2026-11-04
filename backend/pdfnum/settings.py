@@ -10,6 +10,7 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 from .env import env_bool, env_choice, env_int, env_list, env_str
+from .frontend_headers import add_html_headers, is_immutable
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,6 +26,9 @@ ALLOWED_HOSTS = env_list("PDFNUM_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 
 DATA_DIR = Path(env_str("PDFNUM_DATA_DIR") or BASE_DIR / "var")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# The built frontend (frontend/dist), served by WhiteNoise in production.
+PDFNUM_FRONTEND_DIR = Path(env_str("PDFNUM_FRONTEND_DIR") or BASE_DIR.parent / "frontend" / "dist")
 
 # --- Limits -------------------------------------------------------------------
 PDFNUM_MAX_UPLOAD_BYTES = env_int("PDFNUM_MAX_UPLOAD_BYTES", 500 * 1024 * 1024)
@@ -52,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "pdfnum.middleware.RequestSizeLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -93,8 +98,7 @@ FILE_UPLOAD_PERMISSIONS = 0o600
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
 FILE_UPLOAD_TEMP_DIR = DATA_DIR / "tmp"
 FILE_UPLOAD_TEMP_DIR.mkdir(exist_ok=True)
-STATIC_URL = "static/"
-STATIC_ROOT = DATA_DIR / "static"
+STATIC_URL = "static/"  # unused: the frontend is served from WHITENOISE_ROOT
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -117,6 +121,15 @@ CSRF_COOKIE_SECURE = SECURE_COOKIES
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 
+# Behind Traefik (or another reverse proxy that terminates TLS): trust its
+# X-Forwarded-Proto and exactly one X-Forwarded-For entry. Off by default, so
+# a client talking to Django directly cannot fake HTTPS or its IP address.
+TRUST_PROXY = env_bool("PDFNUM_TRUST_PROXY", default=False)
+if TRUST_PROXY:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = env_list("PDFNUM_CSRF_TRUSTED_ORIGINS", default=[])
+SECURE_HSTS_SECONDS = env_int("PDFNUM_HSTS_SECONDS", 0, minimum=0)
+
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
@@ -130,4 +143,26 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "pdfnum.api.exception_handler",
+    "NUM_PROXIES": 1 if TRUST_PROXY else 0,
+}
+
+# --- Serving the frontend, caching, logging ------------------------------------
+WHITENOISE_ROOT = PDFNUM_FRONTEND_DIR if PDFNUM_FRONTEND_DIR.is_dir() else None
+WHITENOISE_IMMUTABLE_FILE_TEST = is_immutable
+WHITENOISE_ADD_HEADERS_FUNCTION = add_html_headers
+
+# Shared by all gunicorn worker processes (rate limiting must count them all).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": DATA_DIR / "cache",
+    }
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
 }

@@ -10,7 +10,7 @@ DEV_ENV := PDFNUM_DEBUG=1
 .DEFAULT_GOAL := help
 .PHONY: help install install-backend install-frontend e2e-browsers e2e-deps \
         dev dev-backend dev-frontend \
-        test test-backend test-frontend e2e check \
+        test test-backend test-frontend e2e e2e-production check \
         lint lint-backend lint-frontend format build clean
 
 help: ## Show this help
@@ -64,6 +64,9 @@ test-frontend: $(NODE_DEPS) ## Run frontend tests (Vitest)
 
 e2e: e2e-browsers ## Run Playwright end-to-end tests against the real stack
 	$(YARN) workspace e2e test
+
+e2e-production: e2e-browsers ## Run the e2e tests against gunicorn serving the built app (like Docker)
+	E2E_TARGET=production $(YARN) workspace e2e test
 
 check: lint test e2e ## Everything CI runs
 

@@ -1,0 +1,18 @@
+# Keep the build context small and free of local state.
+.git
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+backend/.venv
+backend/var
+backend/**/tests
+frontend/dist
+frontend/coverage
+e2e/*
+!e2e/package.json
+.env

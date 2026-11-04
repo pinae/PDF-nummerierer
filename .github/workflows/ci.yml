@@ -59,3 +59,32 @@ jobs:
           name: playwright-report
           path: e2e/playwright-report
           retention-days: 7
+
+  e2e-production:
+    name: End-to-end against the production server (gunicorn + WhiteNoise + CSP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv sync --locked
+        working-directory: backend
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global corepack && corepack enable
+      - run: yarn install --immutable
+      - run: make e2e-deps
+      - run: make e2e-production
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-production
+          path: e2e/playwright-report
+          retention-days: 7
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --tag pdf-nummerierer:ci .

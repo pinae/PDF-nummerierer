@@ -15,6 +15,10 @@ ENV_VARS = [
     "PDFNUM_UPLOAD_RATE",
     "PDFNUM_CONFIG_SAVE_RATE",
     "PDFNUM_JOB_TIMEOUT_SECONDS",
+    "PDFNUM_FRONTEND_DIR",
+    "PDFNUM_CSRF_TRUSTED_ORIGINS",
+    "PDFNUM_HSTS_SECONDS",
+    "PDFNUM_TRUST_PROXY",
     "PDFNUM_GENERATION_RUNNER",
     "PDFNUM_GENERATION_WORKERS",
     "PDFNUM_MAX_OUTPUT_PAGES",
@@ -193,3 +197,56 @@ def test_sqlite_is_tuned_for_a_background_worker(load_settings):
     assert "journal_mode=WAL" in options["init_command"]
     assert options["transaction_mode"] == "IMMEDIATE"
     assert options["timeout"] >= 20
+
+
+def test_forwarding_headers_are_ignored_by_default(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert getattr(settings, "SECURE_PROXY_SSL_HEADER", None) is None
+    # 0: the client IP is REMOTE_ADDR; a spoofed X-Forwarded-For is ignored.
+    assert settings.REST_FRAMEWORK["NUM_PROXIES"] == 0
+
+
+def test_behind_traefik_the_forwarded_proto_and_client_ip_are_trusted(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_TRUST_PROXY="1")
+
+    assert settings.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
+    assert settings.REST_FRAMEWORK["NUM_PROXIES"] == 1
+
+
+def test_hsts_and_trusted_origins_are_configurable(load_settings):
+    settings = load_settings(
+        PDFNUM_SECRET_KEY="x" * 50,
+        PDFNUM_HSTS_SECONDS="31536000",
+        PDFNUM_CSRF_TRUSTED_ORIGINS="https://exams.example.org",
+    )
+
+    assert settings.SECURE_HSTS_SECONDS == 31536000
+    assert settings.CSRF_TRUSTED_ORIGINS == ["https://exams.example.org"]
+
+
+def test_hsts_is_off_unless_configured(load_settings):
+    # HSTS cannot be undone in browsers, so the operator switches it on explicitly.
+    assert load_settings(PDFNUM_SECRET_KEY="x" * 50).SECURE_HSTS_SECONDS == 0
+
+
+def test_throttling_cache_is_shared_between_worker_processes(load_settings, tmp_path):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_DATA_DIR=str(tmp_path))
+
+    cache = settings.CACHES["default"]
+    assert cache["BACKEND"] == "django.core.cache.backends.filebased.FileBasedCache"
+    assert Path(cache["LOCATION"]) == tmp_path / "cache"
+
+
+def test_logs_go_to_the_console(load_settings):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
+
+    assert settings.LOGGING["root"]["handlers"] == ["console"]
+
+
+def test_frontend_build_is_served_from_the_configured_directory(load_settings, tmp_path):
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_FRONTEND_DIR=str(tmp_path))
+
+    assert Path(settings.PDFNUM_FRONTEND_DIR) == tmp_path
+    assert Path(settings.WHITENOISE_ROOT) == tmp_path
+    assert "whitenoise.middleware.WhiteNoiseMiddleware" in settings.MIDDLEWARE

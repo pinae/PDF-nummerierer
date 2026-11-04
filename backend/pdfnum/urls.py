@@ -1,8 +1,8 @@
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from generation import views as generation_views
 
-from . import views
+from . import spa, views
 
 urlpatterns = [
     path("api/health/", views.health, name="health"),
@@ -17,4 +17,6 @@ urlpatterns = [
     path("api/jobs/", include("generation.urls")),
     path("api/configs/", include("configs.urls")),
     path("api/fonts/", include("configs.font_urls")),
+    # Last: every other non-API path is a client-side route of the app.
+    re_path(r"^(?!api/).*$", spa.app_shell, name="app"),
 ]

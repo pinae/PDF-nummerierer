@@ -7,3 +7,6 @@ os.environ.setdefault("PDFNUM_SECRET_KEY", "test-only-insecure-secret-key")
 os.environ.setdefault("PDFNUM_GENERATION_RUNNER", "immediate")
 
 from .settings import *  # noqa: F403
+
+# Fast, isolated cache per test process.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP11 done: the complete flow works end to end and is covered by e2e tests.** Next: WP12 (production packaging). This document is the
+Status: **all work packages (WP0–WP12) done.** The app is feature complete and deployable as a Docker image behind Traefik. This document is the
 binding plan for all work packages.
 
 ---
@@ -592,6 +592,21 @@ limit, see §2 reverse proxy),
 final README (usage with screenshots, dev setup, all test commands, dependency
 update procedure for uv + yarn, deployment).
 *Acceptance: `docker compose up` serves the working app; e2e suite can run against it.*
+*Status: done.* Three-stage Dockerfile (Node: yarn build; Python: uv sync of
+the locked runtime dependencies; slim runtime with only the virtualenv, the
+backend and the built frontend, user `pdfnum`, volume `/data`, healthcheck that
+bypasses proxy settings). WhiteNoise serves the built frontend including
+`/pdfjs/` (hashed `/assets/` immutable); every non-API path gets the app shell
+with a strict Content Security Policy (no inline scripts, no `eval`, only
+`wasm-unsafe-eval` for pdf.js decoders, no framing). `PDFNUM_TRUST_PROXY`
+(set by the compose file) trusts Traefik's `X-Forwarded-Proto` and one
+`X-Forwarded-For` entry; off by default, so forwarding headers cannot be
+spoofed. Rate limiting uses a file cache in `/data` shared by all gunicorn
+processes. `docker-compose.yml` runs the app behind Traefik (labels via
+`.env`) plus a cleanup service; `docker-compose.local.yml` publishes it on
+localhost for a trial. The e2e suite runs against gunicorn serving the built
+app (`make e2e-production`, also in CI with a Docker build job) and against any
+deployment (`E2E_BASE_URL`); both were run in full against the image.
 
 Suggested order: WP0 → WP1 → WP2 → WP5 → WP6 → WP3 → WP7 → WP8 → WP9 → WP4 →
 WP10 → WP11 → WP12 (backend/frontend pairs can interleave; WP1 unblocks

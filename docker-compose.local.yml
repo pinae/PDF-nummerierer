@@ -1,0 +1,14 @@
+# Try the production image locally without Traefik, on http://localhost:8000:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  web:
+    environment:
+      PDFNUM_TRUST_PROXY: "0"
+      PDFNUM_ALLOWED_HOSTS: localhost,127.0.0.1
+    ports:
+      - "127.0.0.1:8000:8000"
+
+networks:
+  traefik:
+    external: false
+    name: pdf-nummerierer-local

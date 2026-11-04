@@ -59,7 +59,8 @@ test("upload, place, save, reuse, number, download — and nothing is left", asy
   await expect(page.locator("canvas.react-pdf__Page__canvas")).toBeVisible();
   await openSettings(page);
   await expect(page.getByText("Not saved yet")).toBeVisible();
-  await page.getByRole("combobox", { name: "Saved configuration" }).click();
+  // Search: the shared list grows with every saved configuration.
+  await page.getByRole("combobox", { name: "Saved configuration" }).fill(configName);
   await page.getByRole("option", { name: new RegExp(`^${configName}`) }).click();
   await expect(page.getByText("Version 1 of 1")).toBeVisible();
   await page.getByRole("button", { name: /^Odd pages/ }).click();

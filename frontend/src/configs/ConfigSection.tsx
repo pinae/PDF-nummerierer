@@ -1,4 +1,5 @@
 import Alert from "@mui/material/Alert";
+import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -94,27 +95,26 @@ export function ConfigSection({ settings, onApply }: ConfigSectionProps) {
       </Typography>
       {failed && <Alert severity="warning">{text.listError}</Alert>}
 
-      <FormControl size="small" fullWidth disabled={!listLoaded || failed}>
-        <InputLabel id={configLabel}>{text.saved}</InputLabel>
-        <Select
-          labelId={configLabel}
-          label={text.saved}
-          value={latestForCurrent?.id ?? ""}
-          renderValue={(id) => configs.find((config) => config.id === id)?.name ?? ""}
-          onChange={(event) => request(configs.find((config) => config.id === event.target.value))}
-        >
-          {configs.length === 0 && (
-            <MenuItem value="" disabled>
-              {text.choose}
-            </MenuItem>
-          )}
-          {configs.map((config) => (
-            <MenuItem key={config.id} value={config.id}>
-              <ListItemText primary={config.name} secondary={`Version ${config.version}`} />
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Autocomplete
+        size="small"
+        options={configs}
+        value={latestForCurrent ?? null}
+        onChange={(_, config) => request(config ?? undefined)}
+        getOptionLabel={(config) => config.name}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        openOnFocus
+        disableClearable={latestForCurrent !== undefined}
+        disabled={!listLoaded || failed}
+        noOptionsText={text.noMatches}
+        renderOption={({ key, ...props }, config) => (
+          <li key={key} {...props}>
+            <ListItemText primary={config.name} secondary={`Version ${config.version}`} />
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField {...params} label={text.saved} placeholder={text.search} />
+        )}
+      />
 
       {current && versions.length > 1 && (
         <FormControl size="small" fullWidth>

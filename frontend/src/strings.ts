@@ -51,6 +51,8 @@ export const strings = {
     title: "Configuration",
     saved: "Saved configuration",
     choose: "Choose a saved configuration",
+    search: "Type to search",
+    noMatches: "No saved configuration with this name",
     version: "Version",
     versionOption: (version: number, date: string) => `Version ${version} · ${date}`,
     notSaved: "Not saved yet",

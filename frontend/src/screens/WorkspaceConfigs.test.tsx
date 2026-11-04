@@ -147,6 +147,18 @@ describe("saved configurations", () => {
     expect(screen.queryByText(text.modified)).not.toBeInTheDocument();
   });
 
+  it("finds a configuration by typing part of its name", async () => {
+    await openWorkspace();
+
+    await userEvent.type(configSelect(), "hci");
+
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      expect.stringContaining("HCI Exam"),
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: /^HCI Exam/ }));
+    expect(stamp()).toHaveTextContent("A-001");
+  });
+
   it("can load an older version", async () => {
     await openWorkspace();
     await choose(configSelect(), /^HCI Exam/);

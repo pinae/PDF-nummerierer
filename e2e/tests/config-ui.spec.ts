@@ -48,7 +48,8 @@ test("saves versions of a configuration and loads them in another browser", asyn
   // A colleague opens another exam and reuses the configuration.
   const colleague = await browser.newPage({ ...testInfo.project.use });
   await openWorkspace(colleague);
-  await colleague.getByRole("combobox", { name: "Saved configuration" }).click();
+  // Search: the shared list grows with every saved configuration.
+  await colleague.getByRole("combobox", { name: "Saved configuration" }).fill(name);
   await colleague.getByRole("option", { name: new RegExp(`^${name}`) }).click();
   await expect(colleague.getByText("Version 2 of 2")).toBeVisible();
   expect(await leftMm(colleague)).toBe("11.0");

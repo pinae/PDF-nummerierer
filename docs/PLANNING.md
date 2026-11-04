@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP8 done (backend complete; upload, viewer and placement working).** Next: WP9 (config management UI). This document is the
+Status: **WP0–WP9 done (backend complete; upload, viewer, placement and configs working).** Next: WP10 (generate & download flow). This document is the
 binding plan for all work packages.
 
 ---
@@ -527,6 +527,15 @@ an automated test.
 **WP9 — Config management UI.**
 Tests first: load + apply config previews instantly; save-as-new vs
 save-new-version flows; dirty-state indicator ("modified since load").
+*Status: done.* A "Configuration" section at the top of the settings lists the
+latest version of every saved configuration; choosing one applies positions,
+fonts and number format at once (with a confirmation if there are unsaved
+changes). A version picker loads older versions. One save dialog covers both
+flows: the hint says "Creates a new configuration" or "Saves version N of …"
+depending on whether the name already exists (matched like the backend:
+case-insensitive, whitespace collapsed); unchanged content is reported as
+already saved. A "Modified" chip shows unsaved changes to a loaded
+configuration. Validation errors from the server are shown in the dialog.
 
 **WP10 — Generate & download flow.**
 Tests first: copies/start/prefix/suffix inputs with live sample; duplex-padding

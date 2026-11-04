@@ -28,6 +28,7 @@ export const defaultFonts = [
 const defaultHandlers = [
   http.get("/api/limits/", () => HttpResponse.json(defaultLimits)),
   http.get("/api/fonts/", () => HttpResponse.json(defaultFonts)),
+  http.get("/api/configs/", () => HttpResponse.json([])),
 ];
 
 /** API mock for all frontend tests. Requests without a handler fail the test. */

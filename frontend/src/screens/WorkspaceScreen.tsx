@@ -3,11 +3,13 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { useCallback, useReducer, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router";
 
 import { documentFileUrl } from "../api/endpoints";
+import { ConfigSection } from "../configs/ConfigSection";
 import type { DocumentInfo, PageRole } from "../api/types";
 import { useDocument } from "../hooks/useDocument";
 import { ptToMm } from "../pdf/coordinates";
@@ -145,6 +147,11 @@ function Workspace({ document }: { document: DocumentInfo }) {
         />
       </Box>
       <ToolsPanel title={strings.placement.toolsLabel}>
+        <ConfigSection
+          settings={editor.config}
+          onApply={(config) => dispatch({ type: "load", config })}
+        />
+        <Divider sx={{ my: 2 }} />
         <PlacementTools
           role={role}
           placement={placements[role] ?? editor.remembered[role]}

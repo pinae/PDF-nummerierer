@@ -66,3 +66,32 @@ def test_fonts_in_use_lists_each_font_once():
     )
 
     assert config.fonts_in_use() == {"caveat", "cmu-serif"}
+
+
+@pytest.mark.parametrize(("x", "y"), [(-0.1, 0), (0, -5), (14400.1, 0), (0, 20000)])
+def test_placement_must_lie_within_the_largest_possible_pdf_page(x, y):
+    with pytest.raises(ValueError, match="coordinates"):
+        Placement(x, y, "cmu-serif", 12)
+
+
+def test_placement_on_the_page_edges_is_allowed():
+    Placement(0, 0, "cmu-serif", 12)
+    Placement(14400, 14400, "cmu-serif", 12)
+
+
+def test_unsupported_characters_per_font():
+    config = StampConfig(
+        placements={
+            PageRole.FIRST: Placement(1, 1, "caveat", 12),
+            PageRole.EVEN: Placement(1, 1, "dejavu-sans", 12),
+        },
+        number_format=NumberFormat(prefix="✓ ", suffix=" 中"),
+    )
+
+    assert config.unsupported_characters() == {"caveat": {"✓", "中"}, "dejavu-sans": {"中"}}
+
+
+def test_printable_config_has_no_unsupported_characters():
+    config = StampConfig(placements={PageRole.FIRST: Placement(1, 1, "caveat", 12)})
+
+    assert config.unsupported_characters() == {}

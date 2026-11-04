@@ -31,6 +31,7 @@ PDFNUM_MAX_UPLOAD_BYTES = env_int("PDFNUM_MAX_UPLOAD_BYTES", 500 * 1024 * 1024)
 # Uploaded and generated PDFs are deleted at the latest after this time.
 PDFNUM_RETENTION_SECONDS = env_int("PDFNUM_RETENTION_SECONDS", 2 * 60 * 60)
 PDFNUM_UPLOAD_RATE = env_str("PDFNUM_UPLOAD_RATE", "60/hour")
+PDFNUM_CONFIG_SAVE_RATE = env_str("PDFNUM_CONFIG_SAVE_RATE", "60/hour")
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "documents",
+    "configs",
 ]
 
 MIDDLEWARE = [

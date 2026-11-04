@@ -72,3 +72,16 @@ def test_cross_origin_request_is_rejected_even_with_a_token(strict_client):
     response = upload(strict_client, HTTP_X_CSRFTOKEN=token, HTTP_ORIGIN="https://evil.example")
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_saving_a_config_without_token_is_rejected(strict_client):
+    csrf_token(strict_client)
+
+    response = strict_client.post(
+        "/api/configs/",
+        {"name": "x", "placements": {}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 403

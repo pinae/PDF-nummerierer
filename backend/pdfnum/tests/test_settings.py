@@ -13,6 +13,7 @@ ENV_VARS = [
     "PDFNUM_DATA_DIR",
     "PDFNUM_SECURE_COOKIES",
     "PDFNUM_UPLOAD_RATE",
+    "PDFNUM_CONFIG_SAVE_RATE",
     "PDFNUM_RETENTION_SECONDS",
     "PDFNUM_MAX_UPLOAD_BYTES",
 ]
@@ -158,3 +159,9 @@ def test_media_is_never_given_a_public_url(load_settings):
     settings = load_settings(PDFNUM_SECRET_KEY="x" * 50)
 
     assert settings.MEDIA_URL in ("", "/")
+
+
+def test_config_save_rate(load_settings):
+    assert load_settings(PDFNUM_SECRET_KEY="x" * 50).PDFNUM_CONFIG_SAVE_RATE == "60/hour"
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_CONFIG_SAVE_RATE="3/minute")
+    assert settings.PDFNUM_CONFIG_SAVE_RATE == "3/minute"

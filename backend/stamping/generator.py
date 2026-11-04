@@ -32,7 +32,7 @@ from reportlab.pdfgen import canvas
 
 from .config import Placement, StampConfig
 from .errors import UnsupportedCharactersError
-from .fonts import get_font, register_font, string_width, unsupported_characters
+from .fonts import get_font, register_font, string_width
 from .geometry import Matrix, PageGeometry
 from .pdfio import add_object, open_pdf
 
@@ -127,10 +127,7 @@ def generate_copies(
 
 
 def _check_characters(config: StampConfig) -> None:
-    fmt = config.number_format
-    text = f"{fmt.prefix}0123456789{fmt.suffix}"
-    for font_id in sorted(config.fonts_in_use()):
-        missing = unsupported_characters(font_id, text)
+    for font_id, missing in sorted(config.unsupported_characters().items()):
         if missing:
             raise UnsupportedCharactersError(
                 f"The characters {''.join(sorted(missing))!r} cannot be printed in "

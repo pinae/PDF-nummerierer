@@ -3,11 +3,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from .fonts import get_font
+from .fonts import get_font, unsupported_characters
 from .numbering import NumberFormat
 
 MIN_FONT_SIZE = 1.0
 MAX_FONT_SIZE = 200.0
+# PDF pages can be at most 200 inches (14400 pt) wide or high (PDF 32000, Annex C).
+MAX_COORDINATE = 14400.0
 
 
 class PageRole(StrEnum):
@@ -39,8 +41,10 @@ class Placement:
     font_size: float
 
     def __post_init__(self) -> None:
-        if not (math.isfinite(self.x) and math.isfinite(self.y)):
-            raise ValueError("Placement coordinates must be finite numbers.")
+        if not all(
+            math.isfinite(value) and 0 <= value <= MAX_COORDINATE for value in (self.x, self.y)
+        ):
+            raise ValueError(f"Placement coordinates must be between 0 and {MAX_COORDINATE:g} pt.")
         if not MIN_FONT_SIZE <= self.font_size <= MAX_FONT_SIZE:
             raise ValueError(
                 f"The font size must be between {MIN_FONT_SIZE:g} and {MAX_FONT_SIZE:g} pt."
@@ -58,3 +62,10 @@ class StampConfig:
 
     def fonts_in_use(self) -> set[str]:
         return {placement.font_id for placement in self.placements.values()}
+
+    def unsupported_characters(self) -> dict[str, set[str]]:
+        """Characters of the number text each used font cannot print (only fonts with gaps)."""
+        fmt = self.number_format
+        text = f"{fmt.prefix}0123456789{fmt.suffix}"
+        missing = {font: unsupported_characters(font, text) for font in self.fonts_in_use()}
+        return {font: chars for font, chars in missing.items() if chars}

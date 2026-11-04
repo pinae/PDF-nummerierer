@@ -5,7 +5,13 @@ from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
 from rest_framework import status
 from rest_framework.authentication import BaseAuthentication, CSRFCheck
-from rest_framework.exceptions import APIException, ErrorDetail, NotFound, PermissionDenied
+from rest_framework.exceptions import (
+    APIException,
+    ErrorDetail,
+    NotFound,
+    PermissionDenied,
+    ValidationError,
+)
 from rest_framework.throttling import AnonRateThrottle
 
 
@@ -46,6 +52,31 @@ class UploadRateThrottle(AnonRateThrottle):
         return settings.PDFNUM_UPLOAD_RATE
 
 
+class ConfigSaveRateThrottle(AnonRateThrottle):
+    scope = "config_save"
+
+    def get_rate(self) -> str:
+        return settings.PDFNUM_CONFIG_SAVE_RATE
+
+
+def _field_errors(detail, path: str = "") -> dict[str, list[str]]:
+    """Flatten nested DRF validation errors to {"a.b.c": ["message", ...]}."""
+    if isinstance(detail, dict):
+        errors: dict[str, list[str]] = {}
+        for key, value in detail.items():
+            child = path if key == "non_field_errors" else f"{path}.{key}".lstrip(".")
+            for field, messages in _field_errors(value, child).items():
+                errors.setdefault(field, []).extend(messages)
+        return errors
+    if isinstance(detail, list):
+        errors = {}
+        for item in detail:
+            for field, messages in _field_errors(item, path).items():
+                errors.setdefault(field, []).extend(messages)
+        return errors
+    return {path or "non_field_errors": [str(detail)]}
+
+
 def exception_handler(exc, context):
     """Render every API error as {"error": {"code": ..., "message": ...}}."""
     # Imported here: rest_framework.views imports this module via the settings.
@@ -59,6 +90,15 @@ def exception_handler(exc, context):
     if response is None:
         return None
     detail = getattr(exc, "detail", None)
+    if isinstance(exc, ValidationError):
+        response.data = {
+            "error": {
+                "code": "invalid",
+                "message": "Some values are not valid. Please check the highlighted fields.",
+                "fields": _field_errors(detail),
+            }
+        }
+        return response
     if isinstance(detail, ErrorDetail):
         code, message = detail.code, str(detail)
     else:

@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP2 done.** Next: WP3. This document is the
+Status: **WP0–WP3 done.** Next: WP4 (or the frontend packages). This document is the
 binding plan for all work packages.
 
 ---
@@ -135,6 +135,12 @@ database or HTTP, and keeps the Django apps thin.
 - **Dev**: two processes (`manage.py runserver` on :8000, `vite dev` on :5173);
   Vite proxies `/api` to Django, so the browser sees one origin and
   cookies/CSRF behave exactly as in production.
+- **Reverse proxy**: the deployment runs behind **Traefik**, which terminates
+  TLS. WP12 therefore sets `SECURE_PROXY_SSL_HEADER` for Traefik's
+  `X-Forwarded-Proto`, DRF `NUM_PROXIES = 1` so throttling sees the real client
+  IP from `X-Forwarded-For`, `CSRF_TRUSTED_ORIGINS`/`ALLOWED_HOSTS` from env,
+  HSTS, and documents Traefik labels including a buffering middleware whose
+  `maxRequestBodyBytes` allows the 500 MB uploads.
 - **Prod (Docker)**: `vite build` output is collected as Django static files and
   served by WhiteNoise behind gunicorn; Django serves `index.html` as SPA shell
   on non-API routes. One container, one origin → no CORS, no cross-site cookie
@@ -147,14 +153,15 @@ database or HTTP, and keeps the Django apps thin.
 ### Data model
 
 ```
-NumberingConfig
+NumberingConfig               # immutable: rows are never updated
   id          UUID pk
-  name        str            # user-visible identity
-  version     int            # (name, version) unique; "save" = insert max+1
-  font_default …             # plus: prefix, suffix, digits (zero-pad width)
+  name        str            # user-visible name of this version (max 80 chars)
+  name_key    str (indexed)  # name casefolded, whitespace collapsed: groups versions
+  version     int            # (name_key, version) unique; "save" = insert max+1
+  prefix, digits, suffix     # number format
   created_at  datetime
 
-Placement                     # 0–3 rows per config
+NumberPlacement               # 0–3 rows per config, immutable
   config      FK → NumberingConfig
   role        enum {first, odd, even}   # unique per config
   x_pt, y_pt  float          # PDF points, start of the text baseline, measured from
@@ -226,8 +233,32 @@ The UI *displays* positions in millimetres.
 | `GET  /api/documents/{uuid}/` | document payload: `{id, name, size, page_count, page_sizes, created_at, expires_at}` |
 | `GET  /api/documents/{uuid}/file/` | the PDF for preview (owner-checked, `nosniff`, `no-store`) |
 | `DELETE /api/documents/{uuid}/` | "Delete now" (204) |
-| `GET/POST /api/configs/` | list latest version per name / save new (version) |
-| `GET /api/configs/{uuid}/` | one config incl. placements |
+| `GET/POST /api/configs/` | list latest version per name (sorted by name) / save as next version: 201, or 200 with the latest version if the content is unchanged |
+| `GET /api/configs/{uuid}/` | one config version incl. placements (old versions stay retrievable) |
+| `GET /api/configs/{uuid}/versions/` | all versions of that config's name, newest first |
+| `GET /api/fonts/` | font registry `[{id, label, category, url}]` for the picker |
+| `GET /api/fonts/{id}.ttf` | the TTF used for the PDF, for the browser preview (`font/ttf`, cacheable) |
+
+Config payload (input and output; missing or `null` placement = no number):
+
+```json
+{
+  "name": "HCI Exam SoSe 2026",
+  "number_format": {"prefix": "", "digits": 4, "suffix": ""},
+  "placements": {
+    "first": {"x": 227, "y": 661, "font": "cmu-serif", "font_size": 12},
+    "odd":   {"x": 144, "y": 780, "font": "cmu-serif", "font_size": 12},
+    "even":  null
+  }
+}
+```
+
+Output adds `id`, `version` and `created_at`. Names match case-insensitively
+with whitespace normalized ("HCI  Exam" and "hci exam" are versions of one
+config; the newest spelling is shown). Configs cannot be changed or deleted
+through the API: they are shared by everybody without login, so nobody can
+destroy someone else's config. Saving is throttled per IP
+(`PDFNUM_CONFIG_SAVE_RATE`, default 60/hour).
 | `POST /api/documents/{uuid}/generate/` | `{config, copies, start}` → `{job_id}` |
 | `GET  /api/jobs/{uuid}/` | `{status, copies_done, copies_total}` for polling |
 | `GET  /api/jobs/{uuid}/download/` | the final PDF; schedules deletion afterwards |
@@ -236,7 +267,9 @@ Errors always have the shape `{"error": {"code": "...", "message": "..."}}`
 with a stable `code` for the frontend and an English `message` for humans.
 Upload codes: `missing_file`, `too_large` (413), `not_pdf`, `invalid_pdf`,
 `encrypted_pdf`; general codes: `not_found`, `csrf_failed`, `throttled` (429),
-`method_not_allowed`.
+`method_not_allowed`. Validation errors use code `invalid` plus
+`"fields": {"placements.first.font_size": ["message", ...], ...}` with dotted
+paths into the request body, so the UI can highlight the exact input.
 
 Generation runs in an in-process worker thread (a departmental tool doesn't
 need Celery/Redis); the job row carries determinate progress ("copy 37 of 200").
@@ -393,6 +426,7 @@ and never mutates version 1; list returns latest version per name; placements
 validated (role unique, 0–3 of them, coordinates within page bounds not
 required — configs are document-independent); fetch by id.
 *Acceptance: version semantics proven by tests.*
+*Status: done. Includes the font endpoints for the frontend picker and preview.*
 
 **WP4 — Generation jobs API.**
 Tests first: generate creates job bound to session; worker thread updates
@@ -451,6 +485,8 @@ context gets 404 on foreign document/job/download URLs. Dark-mode smoke shot.
 **WP12 — Production packaging & docs.**
 Dockerfile (multi-stage: yarn build → collectstatic → gunicorn+WhiteNoise),
 docker-compose with volumes + TTL-cleanup schedule, settings via env vars,
+Traefik integration (labels, TLS via Traefik, forwarded headers, body size
+limit, see §2 reverse proxy),
 final README (usage with screenshots, dev setup, all test commands, dependency
 update procedure for uv + yarn, deployment).
 *Acceptance: `docker compose up` serves the working app; e2e suite can run against it.*

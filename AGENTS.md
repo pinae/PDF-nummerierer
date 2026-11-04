@@ -88,6 +88,10 @@ Environment quirks you may hit in sandboxed/cloud containers:
   test) and render whole routes with `renderRoute(path)` from `src/test/render.tsx`.
   Do not call `request.formData()` in MSW handlers: Node's multipart parser
   rejects jsdom's `File` on newer Node versions; inspect `request.text()`.
+- react-pdf/pdf.js cannot run in jsdom: Vitest replaces it with
+  `src/test/reactPdfMock.tsx` (see `src/test/setup.ts`), so anything about real
+  rendering must be covered by Playwright. Convert between PDF points and
+  screen pixels only with `src/pdf/coordinates.ts`.
 - Run the checks on the Node version in `.nvmrc` (the one CI uses): some
   incompatibilities only show up there.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),

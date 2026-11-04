@@ -18,8 +18,11 @@ test("the backend is reachable through the frontend origin", async ({ request })
 });
 
 test("screens can be opened directly by URL", async ({ page }) => {
-  await page.goto("/exams/0f5c6a1e-0000-4000-8000-000000000000");
-  await expect(page.getByRole("heading", { level: 1, name: "Place the number" })).toBeVisible();
+  // Deep links into a real exam's workspace are covered in viewer.spec.ts.
+  await page.goto("/done");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your copies are ready" }),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "PDF-Nummerierer" }).click();
   await expect(page).toHaveURL("/");

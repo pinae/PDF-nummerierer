@@ -1,13 +1,27 @@
 /// <reference types="vitest/config" />
+import { createRequire } from "node:module";
+import path from "node:path";
+
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, normalizePath } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 // Dev and preview servers proxy /api to Django, so the browser sees a single
 // origin exactly like in production (cookies and CSRF behave identically).
 const backendUrl = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
+// pdf.js loads character maps, standard fonts, image decoders and colour
+// profiles at runtime; they are served from /pdfjs/ (see PdfViewer.tsx).
+const require = createRequire(import.meta.url);
+const pdfjsDir = path.dirname(require.resolve("pdfjs-dist/package.json"));
+const pdfjsAssets = ["cmaps", "standard_fonts", "wasm", "iccs"].map((name) => ({
+  src: normalizePath(path.join(pdfjsDir, name)),
+  dest: "pdfjs",
+  rename: { stripBase: 2 }, // node_modules/pdfjs-dist/<name>/… → pdfjs/<name>/…
+}));
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), viteStaticCopy({ targets: pdfjsAssets })],
   server: {
     proxy: {
       "/api": { target: backendUrl, changeOrigin: false },

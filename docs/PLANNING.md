@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0–WP6 done (backend complete, upload screen working).** Next: WP7 (PDF viewer). This document is the
+Status: **WP0–WP7 done (backend complete; upload screen and PDF viewer working).** Next: WP8 (placement tools). This document is the
 binding plan for all work packages.
 
 ---
@@ -488,6 +488,16 @@ odd/first even/last, zoom fit-page/fit-width/percentage; **pt↔px mapping** of
 displayed-page coordinates (see §2, coordinates) as one pure function,
 round-trips proven in unit tests; rotated pages render rotated by pdf.js and
 need no special casing.
+*Status: done.* `src/pdf/coordinates.ts` is the one pt ↔ px conversion
+(`left = x·scale`, `top = (height − y)·scale`, scale = CSS px per pt; 100 %
+zoom = real paper size, 96/72 px per pt). The viewer renders with react-pdf
+(pdf.js 6.3, text and annotation layers off; forms are drawn into the canvas,
+like the flattened output), fits the page by default, offers fit width and
+zoom steps, Page Up/Down/Home/End, and an overlay slot that WP8 uses for the
+marker. pdf.js character maps, standard fonts, wasm decoders and ICC profiles
+are copied to `/pdfjs/` in the build: **WP12 must serve that path** next to
+the SPA assets. Vitest mocks react-pdf; Playwright checks real rendering
+(ink on the canvas, white paper in dark mode, no pdf.js resource warnings).
 
 **WP8 — Placement tools.**
 Tests first: segmented control switches target + navigates to a representative

@@ -41,6 +41,31 @@ export const strings = {
   },
   workspace: {
     title: "Place the number",
+    loading: "Loading the exam",
+    missingTitle: "This exam is no longer here",
+    missingText:
+      "It was deleted after the download or expired after some time. Please upload the PDF again.",
+    uploadAgain: "Upload a PDF",
+  },
+  viewer: {
+    toolbarLabel: "Pages and zoom",
+    previewLabel: "Page preview",
+    previous: "Previous page",
+    next: "Next page",
+    pageOf: (page: number, count: number) => `Page ${page} of ${count}`,
+    jump: {
+      first: "First page",
+      odd: "First odd page",
+      even: "First even page",
+      last: "Last page",
+    },
+    jumpText: { first: "First", odd: "Odd", even: "Even", last: "Last" },
+    fitPage: "Fit page",
+    fitWidth: "Fit width",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    loading: "Loading the PDF",
+    loadError: "The PDF could not be displayed. Please upload it again.",
   },
   done: {
     title: "Your copies are ready",

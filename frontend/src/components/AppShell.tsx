@@ -8,7 +8,9 @@ import { strings } from "../strings";
 
 export function AppShell() {
   return (
-    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+    // Fixed height: the header stays put, <main> scrolls, and the workspace can
+    // fill exactly the remaining space (its preview scrolls by itself).
+    <Box sx={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
       <AppBar
         position="static"
         color="primary"
@@ -28,7 +30,10 @@ export function AppShell() {
           </Link>
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <Box
+        component="main"
+        sx={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column" }}
+      >
         <Outlet />
       </Box>
     </Box>

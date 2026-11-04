@@ -11,13 +11,16 @@ need and download one print-ready PDF that contains all numbered copies.
 
 ## Usage
 
+![Upload screen](docs/screenshots/upload.png)
+
 1. **Upload** your exam PDF (up to 500 MB). It is bound to your browser
    session: nobody else can see or download it.
 2. **Place the number.** Choose *First page*, *Odd pages* or *Even pages* and
-   click a position preset or drag the number where you want it. Each of the
+   click a position preset, click on the page or drag the number where you
+   want it; arrow keys and exact millimetre fields fine-tune it. Each of the
    three placements is optional. Pick a font, a size and the number format
    (e.g. `Exam A – 0042`). Page through the document: the number is previewed
-   live on every page.
+   live on every page, exactly where it will be printed.
 3. **Save the configuration** under a name to reuse it next semester. Saved
    configurations are visible to everyone using the app; saving under an
    existing name creates a new version and never overwrites the old one.
@@ -26,10 +29,17 @@ need and download one print-ready PDF that contains all numbered copies.
    students' pages on one sheet; a switch turns this off. The joined PDF is
    downloaded.
 5. After the download, the uploaded and the generated PDFs are deleted from the
-   server automatically (at the latest after 2 hours). A **Delete now** button
-   is available as well.
+   server automatically (at the latest after 2 hours); the done screen confirms
+   it. A **Delete now** button is available as well.
 
-No account is needed.
+No account is needed. The app follows the browser's light or dark mode and
+works on phones as well as on large screens.
+
+![Workspace: the number is placed on the page, settings on the right](docs/screenshots/workspace.png)
+
+| Dark mode | Phone |
+|---|---|
+| ![Workspace in dark mode](docs/screenshots/workspace-dark.png) | ![Workspace on a phone](docs/screenshots/phone.png) |
 
 ## Repository layout
 

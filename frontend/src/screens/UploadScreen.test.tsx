@@ -62,19 +62,22 @@ describe("upload screen", () => {
   });
 
   it("uploads a chosen PDF and opens its workspace", async () => {
-    let uploaded: File | null = null;
+    // The raw multipart body is inspected instead of request.formData(): Node's
+    // multipart parser rejects jsdom's File class on newer Node versions.
+    let body = "";
     server.use(
       http.post("/api/documents/", async ({ request }) => {
-        uploaded = (await request.formData()).get("file") as File;
+        body = await request.text();
         return HttpResponse.json({ id: "d1" }, { status: 201 });
       }),
     );
     const { router } = renderRoute("/");
 
-    await userEvent.upload(fileInput(), pdf());
+    await userEvent.upload(fileInput(), pdf("exam.pdf", "%PDF-1.7 exam content"));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/exams/d1"));
-    expect(uploaded).toHaveProperty("name", "exam.pdf");
+    expect(body).toMatch(/Content-Disposition: form-data; name="file"; filename="exam\.pdf"/);
+    expect(body).toContain("%PDF-1.7 exam content");
   });
 
   it("uploads a dropped PDF", async () => {

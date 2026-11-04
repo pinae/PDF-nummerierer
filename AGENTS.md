@@ -86,6 +86,10 @@ Environment quirks you may hit in sandboxed/cloud containers:
 - Frontend API calls go through `src/api/endpoints.ts`/`client.ts`; tests mock
   the network with MSW (`src/test/server.ts`, unhandled requests fail the
   test) and render whole routes with `renderRoute(path)` from `src/test/render.tsx`.
+  Do not call `request.formData()` in MSW handlers: Node's multipart parser
+  rejects jsdom's `File` on newer Node versions; inspect `request.text()`.
+- Run the checks on the Node version in `.nvmrc` (the one CI uses): some
+  incompatibilities only show up there.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),
   one work package per PR where feasible.
 - Do not add dependencies beyond the stack pinned in `docs/PLANNING.md`

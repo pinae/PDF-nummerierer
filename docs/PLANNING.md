@@ -4,7 +4,7 @@ A web application that stamps serial numbers onto exam PDFs so the pages of a
 multi-page exam cannot be mixed up between students, then joins all numbered
 copies into one print-ready PDF.
 
-Status: **WP0 (scaffolding & tooling) done.** Next: WP1. This document is the
+Status: **WP0 and WP1 done.** Next: WP2. This document is the
 binding plan for all work packages.
 
 ---
@@ -82,10 +82,10 @@ PDF-nummerierer/
 ├── backend/                 # Django project (Python, managed with uv)
 │   ├── pdfnum/              # settings, urls, asgi/wsgi
 │   ├── stamping/            # PURE PYTHON pdf-stamping library — no Django imports
+│   │   └── fonts/           # bundled TTFs + licenses (see the font list in §1)
 │   ├── documents/           # Django app: upload, preview file serving, deletion
 │   ├── configs/             # Django app: numbering configs (name + version)
 │   ├── generation/          # Django app: jobs, progress, download
-│   ├── fonts/               # bundled TTFs (see the font list in §1)
 │   ├── manage.py
 │   └── pyproject.toml
 ├── frontend/                # Vite + React + TypeScript + MUI, yarn 4
@@ -157,7 +157,8 @@ NumberingConfig
 Placement                     # 0–3 rows per config
   config      FK → NumberingConfig
   role        enum {first, odd, even}   # unique per config
-  x_pt, y_pt  float          # PDF points, origin bottom-left (like config.json)
+  x_pt, y_pt  float          # PDF points, start of the text baseline, measured from
+                             # the bottom-left corner of the page AS DISPLAYED
   font        str            # id from the font registry, e.g. "cmu-serif"
   font_size   float
 
@@ -181,10 +182,38 @@ GenerationJob
   created_at / finished_at
 ```
 
-Coordinates are stored and transmitted in **PDF points (origin bottom-left)**
-end to end — the same unit reportlab/pypdf stamp with — so the live browser
-preview and the stamped output cannot drift apart. The UI *displays* positions
-in millimetres.
+Coordinates are stored and transmitted in **PDF points** end to end. A
+placement (x, y) is the start of the text baseline (as in the original
+`config.json`), measured from the **bottom-left corner of the page as
+displayed**: the crop box (clipped to the media box) after applying `/Rotate`,
+x to the right, y upwards. This is exactly what the browser preview shows, so:
+
+- the frontend converts with a plain scale factor
+  (`x = px / scale`, `y = (displayedHeightPx − py) / scale`) in one shared,
+  unit-tested function, without pdf.js user-space helpers;
+- rotated pages and offset crop boxes are handled once, in the backend
+  (`stamping/geometry.py`); the number always reads upright as displayed;
+- a saved config means the same visual position on any document.
+
+The UI *displays* positions in millimetres.
+
+### Output PDF semantics (implemented in WP1)
+
+- Copy k carries the number `start + k − 1` on every page that has a placement
+  for its role. Padding pages for duplex printing are blank and not numbered;
+  they copy size, crop box and rotation of the copy's last page.
+- The output is **print-ready**: printable form fields and other annotations
+  with an appearance are flattened into the page (their look is kept), then all
+  annotations and the AcroForm are dropped. The number is drawn last, so
+  nothing, including white field backgrounds, can hide it.
+- Each source page becomes one shared Form XObject, written once, and each
+  serial a tiny Form XObject. Measured: 9999 copies of a 4-page exam take
+  about 12 s and produce 16 MB (about 400 bytes per additional page) with
+  about 400 MB peak memory.
+- Progress is reported in stages: `preparing` → `stamping` (per copy) →
+  `writing` → `done`.
+- PDFs that open without a password (owner-password restrictions only) are
+  accepted; PDFs needing a password raise `EncryptedPdfError`.
 
 ### API sketch (all JSON unless noted, all under `/api/`)
 
@@ -328,6 +357,7 @@ font registry (fewer than 10 entries, each with category and bundled TTF);
 shared resources written once across copies (output size test); correct
 behavior for pages without a placement, odd page sizes, rotated pages.
 *Acceptance: library reproduces the original script's output semantics; no Django import.*
+*Status: done (see §2, output PDF semantics).*
 
 **WP2 — Documents API.**
 Tests first: upload happy path returns id/page_count/page_sizes; session
@@ -365,9 +395,10 @@ navigation to workspace on success.
 **WP7 — PDF viewer.**
 Tests first (coordinate utilities as pure functions; viewer behavior with
 mocked pdf.js): render page, prev/next + page indicator, jump to first/first
-odd/first even/last, zoom fit-page/fit-width/percentage; **pt↔px mapping via
-the pdf.js viewport (`convertToPdfPoint`/`convertToViewportPoint`)** so
-rotation/cropping are handled, round-trips proven in unit tests.
+odd/first even/last, zoom fit-page/fit-width/percentage; **pt↔px mapping** of
+displayed-page coordinates (see §2, coordinates) as one pure function,
+round-trips proven in unit tests; rotated pages render rotated by pdf.js and
+need no special casing.
 
 **WP8 — Placement tools.**
 Tests first: segmented control switches target + navigates to a representative

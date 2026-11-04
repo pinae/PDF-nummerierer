@@ -54,9 +54,13 @@ Environment quirks you may hit in sandboxed/cloud containers:
 
 ## Conventions
 
-- Coordinates are **PDF points, origin bottom-left**, everywhere in storage and
-  APIs. Only the UI layer converts to mm/pixels. Use the pdf.js viewport
-  conversion helpers in the frontend, never hand-rolled math.
+- Coordinates are **PDF points from the bottom-left corner of the page as
+  displayed** (crop box after /Rotate; (x, y) = start of the text baseline),
+  everywhere in storage and APIs. Rotation/crop handling lives only in
+  `backend/stamping/geometry.py`; the frontend converts pt ↔ px with one shared
+  pure function and never re-implements this elsewhere.
+- Changes to PDF output need render-based tests (`stamping/tests/render.py`,
+  PDFium) proving what ends up on paper, not just pypdf structure checks.
 - Security invariants (do not weaken, add tests when touching them):
   session-key binding on every Document/Job query, 404 (never 403) on foreign
   objects, UUID ids in URLs, CSRF on all mutations, uploads validated by magic

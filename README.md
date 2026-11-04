@@ -5,9 +5,9 @@ multi-page exam can never be mixed up between students. Upload the exam, place
 the number visually on the first, odd and even pages, choose how many copies you
 need and download one print-ready PDF that contains all numbered copies.
 
-> **Status:** under development. The project scaffolding (work package WP0) is
-> done; the features below are being implemented package by package following
-> [`docs/PLANNING.md`](docs/PLANNING.md).
+> **Status:** under development. Done: project scaffolding (WP0) and the PDF
+> stamping library (WP1). The web features below are being implemented package
+> by package following [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Usage
 
@@ -36,7 +36,7 @@ No account is needed.
 | Path | Contents |
 |---|---|
 | `backend/` | Django project (Python 3.14, managed with [uv](https://docs.astral.sh/uv/)) |
-| `backend/stamping/` | Framework-free PDF stamping library |
+| `backend/stamping/` | Framework-free PDF stamping library and the bundled fonts |
 | `frontend/` | React 19 + TypeScript + MUI single-page app (Vite) |
 | `e2e/` | Playwright end-to-end tests against the real stack |
 | `docs/PLANNING.md` | Architecture, security model, UX design and work packages |
@@ -233,3 +233,6 @@ when new major versions are released.
 ## License
 
 GNU General Public License v3.0, see [`LICENSE`](LICENSE).
+
+The bundled fonts keep their own licenses (mostly SIL Open Font License), see
+[`backend/stamping/fonts/README.md`](backend/stamping/fonts/README.md).

@@ -263,7 +263,7 @@ destroy someone else's config. Saving is throttled per IP
 (`PDFNUM_CONFIG_SAVE_RATE`, default 60/hour).
 | `POST /api/documents/{uuid}/generate/` | `{number_format, placements, copies, start = 1, pad_to_even = true}` (the current, possibly unsaved config) → 202 + job payload |
 | `GET  /api/jobs/{uuid}/` | job payload for polling: `{id, document_id, status, stage, copies_done, copies_total, total_pages, error, download_url, created_at, finished_at}` |
-| `GET  /api/jobs/{uuid}/download/` | the joined PDF as attachment `<upload name>-numbered.pdf`; once the last byte is sent, document, job and both files are deleted (an aborted download deletes nothing, so it can be retried) |
+| `GET  /api/jobs/{uuid}/download/` | the joined PDF as attachment `<upload name>-numbered.pdf`; document, job and both files are deleted *before* the last 64 bytes are sent, so a client holding the complete file can never still find the exam on the server; an aborted download deletes nothing, so it can be retried |
 
 Errors always have the shape `{"error": {"code": "...", "message": "..."}}`
 with a stable `code` for the frontend and an English `message` for humans.

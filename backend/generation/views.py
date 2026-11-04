@@ -1,3 +1,5 @@
+import logging
+import os
 from pathlib import Path
 
 from django.http import StreamingHttpResponse
@@ -17,6 +19,9 @@ from .serializers import GenerateSerializer
 from .services import start_generation
 
 CHUNK_BYTES = 1024 * 1024
+TAIL_BYTES = 64
+
+logger = logging.getLogger(__name__)
 
 
 def job_payload(job: GenerationJob) -> dict:
@@ -61,15 +66,25 @@ class JobView(APIView):
 
 
 def _stream_then_delete(path: str, document_id):
-    """Yield the file; once the last byte is handed to the server, delete everything.
+    """Yield the file and delete document, job and files before its last bytes.
 
-    An aborted download stops the iteration early, so nothing is deleted and
-    the user can retry.
+    The final TAIL_BYTES are held back until the deletion is done, so a client
+    holding the complete file can never find the exam on the server any more
+    (deleting after the last chunk would race with the client's next request).
+    A download aborted earlier stops the iteration, deletes nothing and can be
+    retried.
     """
     with open(path, "rb") as file:
-        while chunk := file.read(CHUNK_BYTES):
-            yield chunk
-    Document.objects.filter(pk=document_id).delete()
+        body_end = max(os.fstat(file.fileno()).st_size - TAIL_BYTES, 0)
+        while (position := file.tell()) < body_end:
+            yield file.read(min(CHUNK_BYTES, body_end - position))
+        tail = file.read()
+    try:
+        Document.objects.filter(pk=document_id).delete()
+    except Exception:
+        # Still deliver the file; the periodic cleanup deletes it at the latest.
+        logger.exception("Could not delete document %s after its download", document_id)
+    yield tail
 
 
 class JobDownloadView(APIView):

@@ -45,6 +45,39 @@ def test_completed_download_deletes_everything(client, finished_job, uploaded, s
     assert client.get(f"/api/jobs/{finished_job['id']}/").status_code == 404
 
 
+def test_everything_is_deleted_before_the_last_byte_reaches_the_client(
+    client, finished_job, settings
+):
+    """Otherwise a client holding the complete file could still find the exam on
+    the server (the deletion would race with the client's next request)."""
+    response = client.get(finished_job["download_url"])
+    expected = int(response["Content-Length"])
+    received = 0
+    states_at_completion = []
+
+    for chunk in response.streaming_content:
+        received += len(chunk)
+        if received == expected:
+            states_at_completion.append(
+                (Document.objects.exists(), GenerationJob.objects.exists(), files_in(settings))
+            )
+    response.close()
+
+    assert received == expected
+    assert states_at_completion == [(False, False, [])]
+
+
+def test_large_outputs_are_streamed_in_chunks(client, finished_job, monkeypatch):
+    monkeypatch.setattr("generation.views.CHUNK_BYTES", 4096)
+
+    response = client.get(finished_job["download_url"])
+    chunks = list(response.streaming_content)
+
+    assert len(chunks) > 2
+    assert all(len(chunk) <= 4096 for chunk in chunks)
+    assert int(response["Content-Length"]) == sum(len(chunk) for chunk in chunks)
+
+
 def test_interrupted_download_keeps_the_files_for_a_retry(client, finished_job, settings):
     response = client.get(finished_job["download_url"])
     next(iter(response.streaming_content))

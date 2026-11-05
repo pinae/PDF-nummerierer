@@ -73,8 +73,9 @@ jobs:
           node-version-file: .nvmrc
       - run: npm install --global corepack && corepack enable
       - run: yarn install --immutable
-      - run: make e2e-deps
-      - run: make e2e-production
+      # The browser matrix runs in the e2e job; this job checks the server setup.
+      - run: make e2e-deps E2E_BROWSERS=chromium
+      - run: make e2e-production E2E_BROWSERS=chromium
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

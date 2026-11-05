@@ -75,9 +75,16 @@ test.describe("preview equals output", () => {
       const canvas = page.locator("canvas.react-pdf__Page__canvas");
       await expect(canvas).toBeVisible();
 
-      if (testCase.font) {
-        await page.getByRole("combobox", { name: "Font" }).click();
-        await page.getByRole("option", { name: testCase.font }).click();
+      const font = testCase.font;
+      if (font) {
+        // Under load a click on an option can land while the menu is still
+        // opening and be dropped; check the selection and pick again if so.
+        const fontSelect = page.getByRole("combobox", { name: "Font" });
+        await expect(async () => {
+          if ((await fontSelect.getAttribute("aria-expanded")) !== "true") await fontSelect.click();
+          await page.getByRole("option", { name: font }).click({ timeout: 2_000 });
+          await expect(fontSelect).toHaveText(font, { timeout: 2_000 });
+        }).toPass();
       }
       if (testCase.size) await page.getByLabel("Size", { exact: true }).fill(testCase.size);
       await testCase.place(page);

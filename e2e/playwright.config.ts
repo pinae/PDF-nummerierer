@@ -74,9 +74,34 @@ const productionServer = [
   },
 ];
 
-// Optional override for environments with a preinstalled browser that does not
+// Optional override for environments with a preinstalled Chromium that does not
 // match this Playwright version (see README, "End-to-end tests").
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+
+/**
+ * Every engine the app's users have: Chromium (Chrome, Edge), Firefox and
+ * WebKit (Safari), on desktop and phone. E2E_BROWSERS=chromium,webkit limits a
+ * run to some engines (e.g. where only Chromium is installed).
+ */
+const allProjects = [
+  {
+    name: "desktop",
+    engine: "chromium",
+    use: { ...devices["Desktop Chrome"], launchOptions: { executablePath } },
+  },
+  {
+    name: "phone",
+    engine: "chromium",
+    use: { ...devices["Pixel 7"], launchOptions: { executablePath } },
+  },
+  { name: "firefox", engine: "firefox", use: { ...devices["Desktop Firefox"] } },
+  { name: "safari", engine: "webkit", use: { ...devices["Desktop Safari"] } },
+  { name: "iphone", engine: "webkit", use: { ...devices["iPhone 15"] } },
+];
+const engines = process.env.E2E_BROWSERS?.split(",").map((engine) => engine.trim());
+const projects = allProjects
+  .filter((project) => !engines || engines.includes(project.engine))
+  .map(({ name, use }) => ({ name, use }));
 
 export default defineConfig({
   testDir: "./tests",
@@ -91,11 +116,7 @@ export default defineConfig({
   use: {
     baseURL: externalUrl ?? (production ? backendUrl : frontendUrl),
     trace: "on-first-retry",
-    launchOptions: { executablePath },
   },
-  projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "phone", use: { ...devices["Pixel 7"] } },
-  ],
+  projects,
   webServer: externalUrl ? undefined : production ? productionServer : devServers,
 });

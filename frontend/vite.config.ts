@@ -22,6 +22,17 @@ const pdfjsAssets = ["cmaps", "standard_fonts", "wasm", "iccs"].map((name) => ({
 
 export default defineConfig({
   plugins: [react(), viteStaticCopy({ targets: pdfjsAssets })],
+  resolve: {
+    // Use pdf.js's legacy build everywhere (react-pdf imports these paths). The
+    // modern build calls new JavaScript built-ins without fallback, e.g.
+    // Map.prototype.getOrInsertComputed, which Safari lacked: "this.#t.
+    // getOrInsertComputed is not a function". The legacy build polyfills them.
+    alias: [
+      { find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" },
+      { find: /^pdfjs-dist\/build\/(.*)$/, replacement: "pdfjs-dist/legacy/build/$1" },
+      { find: /^pdfjs-dist\/web\/(.*)$/, replacement: "pdfjs-dist/legacy/web/$1" },
+    ],
+  },
   server: {
     proxy: {
       "/api": { target: backendUrl, changeOrigin: false },

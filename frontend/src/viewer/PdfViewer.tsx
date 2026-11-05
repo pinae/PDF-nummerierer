@@ -24,8 +24,10 @@ import { strings } from "../strings";
 import { formatZoom, resolveScale, VIEWPORT_PADDING, zoomIn, zoomOut, type Zoom } from "./zoom";
 
 // Must be set in the module that renders react-pdf components (see react-pdf docs).
+// The legacy build polyfills new JavaScript built-ins that some browsers lack
+// (e.g. Map.prototype.getOrInsertComputed in Safari); see vite.config.ts.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
+  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
   import.meta.url,
 ).toString();
 

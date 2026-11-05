@@ -98,6 +98,13 @@ Environment quirks you may hit in sandboxed/cloud containers:
   must keep `preview-equals-output.spec.ts` green.
 - Run the checks on the Node version in `.nvmrc` (the one CI uses): some
   incompatibilities only show up there.
+- pdf.js is always used in its **legacy build** (Vite aliases in
+  `vite.config.ts`, worker URL in `src/viewer/PdfViewer.tsx`): the modern build
+  calls JS built-ins Safari lacks. Keep `browser-compat.spec.ts` green and do
+  not import `pdfjs-dist/build/…` paths around the alias.
+- The e2e suite runs in Chromium, Firefox and WebKit. Where Firefox/WebKit
+  cannot be downloaded, run `make e2e E2E_BROWSERS=chromium` and say so; CI
+  runs all three.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),
   one work package per PR where feasible.
 - Do not add dependencies beyond the stack pinned in `docs/PLANNING.md`

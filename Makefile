@@ -35,18 +35,24 @@ $(NODE_DEPS): $(NODE_MANIFESTS)
 	$(YARN) install
 	@touch $@
 
-# Downloads the Chromium build matching the installed Playwright version.
-# Idempotent and quick when the browser is already present. Skipped when
-# PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH points at an existing browser.
-e2e-browsers: $(NODE_DEPS) ## Download Playwright's Chromium (automatic in install and e2e)
-ifeq ($(strip $(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)),)
-	$(YARN) workspace e2e playwright install chromium
+# Downloads the browsers (Chromium, Firefox, WebKit = Safari's engine) matching
+# the installed Playwright version. Idempotent and quick when they are present.
+# E2E_BROWSERS limits the engines; PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH replaces
+# the Chromium download with an existing browser.
+comma := ,
+E2E_BROWSERS ?= chromium,firefox,webkit
+E2E_ENGINES := $(subst $(comma), ,$(E2E_BROWSERS))
+E2E_DOWNLOADS := $(if $(strip $(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)),$(filter-out chromium,$(E2E_ENGINES)),$(E2E_ENGINES))
+
+e2e-browsers: $(NODE_DEPS) ## Download the Playwright browsers (automatic in install and e2e)
+ifneq ($(strip $(E2E_DOWNLOADS)),)
+	$(YARN) workspace e2e playwright install $(E2E_DOWNLOADS)
 else
 	@echo "Using Chromium at $(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)"
 endif
 
-e2e-deps: $(NODE_DEPS) ## Install system libraries Chromium needs (Debian/Ubuntu, uses sudo)
-	$(YARN) workspace e2e playwright install-deps chromium
+e2e-deps: $(NODE_DEPS) ## Install system libraries the browsers need (Debian/Ubuntu, uses sudo)
+	$(YARN) workspace e2e playwright install-deps $(E2E_ENGINES)
 
 dev: ## Run backend (:8000) and frontend (:5173) together
 	$(MAKE) -j2 dev-backend dev-frontend

@@ -59,6 +59,23 @@ describe("apiRequest", () => {
     expect(calls).toEqual(["csrf", "delete:fresh-token"]);
   });
 
+  it("uses the token from the response while the new cookie is not readable yet", async () => {
+    // Safari hands cookies from a response to document.cookie only a moment
+    // later; the first upload must not go out without a token.
+    let token: string | null = "unset";
+    server.use(
+      http.get("/api/csrf/", () => HttpResponse.json({ csrf_token: "token-from-response" })),
+      http.delete("/api/documents/abc/", ({ request }) => {
+        token = request.headers.get("X-CSRFToken");
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await apiRequest("/api/documents/abc/", { method: "DELETE" });
+
+    expect(token).toBe("token-from-response");
+  });
+
   it("turns API errors into a typed ApiError with code, message and fields", async () => {
     document.cookie = "csrftoken=t; path=/";
     server.use(

@@ -231,7 +231,7 @@ The UI *displays* positions in millimetres.
 
 | Method & path | Purpose |
 |---|---|
-| `GET  /api/csrf/` | sets CSRF cookie for the SPA |
+| `GET  /api/csrf/` | sets the CSRF cookie for the SPA and returns `{csrf_token}` (Safari exposes a new cookie to `document.cookie` only a moment later; the SPA falls back to this token) |
 | `GET  /api/limits/` | `{max_upload_bytes, retention_seconds, idle_seconds, max_copies, max_output_pages}`, so the UI states the limits up front |
 | `POST /api/documents/` | multipart upload (field `file`) → document payload (201) |
 | `GET  /api/documents/{uuid}/` | document payload: `{id, name, size, page_count, page_sizes, created_at, expires_at}` |

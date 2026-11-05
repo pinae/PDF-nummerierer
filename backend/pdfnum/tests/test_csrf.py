@@ -36,6 +36,17 @@ def test_csrf_endpoint_sets_a_cookie_readable_by_the_spa(strict_client):
 
 
 @pytest.mark.django_db
+def test_csrf_endpoint_returns_a_token_that_passes_the_check(strict_client):
+    # Safari exposes a new cookie to document.cookie only a moment after the
+    # response; the SPA can use the token from the body meanwhile.
+    response = strict_client.get("/api/csrf/")
+
+    token = response.json()["csrf_token"]
+    assert "no-store" in response["Cache-Control"]
+    assert upload(strict_client, HTTP_X_CSRFTOKEN=token).status_code == 201
+
+
+@pytest.mark.django_db
 def test_upload_without_token_is_rejected(strict_client):
     csrf_token(strict_client)
 
@@ -43,6 +54,17 @@ def test_upload_without_token_is_rejected(strict_client):
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "csrf_failed"
+
+
+@pytest.mark.django_db
+def test_rejections_are_logged_with_the_reason(strict_client, caplog):
+    csrf_token(strict_client)
+
+    with caplog.at_level("WARNING", logger="django.security.csrf"):
+        upload(strict_client)
+
+    assert "CSRF token missing" in caplog.text
+    assert "/api/documents/" in caplog.text
 
 
 @pytest.mark.django_db

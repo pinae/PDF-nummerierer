@@ -39,12 +39,16 @@ export function readCookie(name: string): string | undefined {
   return undefined;
 }
 
-/** The CSRF token from its cookie; asks the backend to set the cookie first if needed. */
+/**
+ * The CSRF token from its cookie; asks the backend to set the cookie first if
+ * needed. The backend also returns the token in the body: Safari makes the new
+ * cookie readable in document.cookie only a moment after the response.
+ */
 export async function ensureCsrfToken(): Promise<string> {
-  if (!readCookie(CSRF_COOKIE)) {
-    await apiRequest("/api/csrf/");
-  }
-  return readCookie(CSRF_COOKIE) ?? "";
+  const fromCookie = readCookie(CSRF_COOKIE);
+  if (fromCookie) return fromCookie;
+  const { csrf_token: fromResponse } = await apiRequest<{ csrf_token?: string }>("/api/csrf/");
+  return readCookie(CSRF_COOKIE) ?? fromResponse ?? "";
 }
 
 interface ErrorBody {

@@ -1,5 +1,7 @@
 """Shared API plumbing: CSRF for anonymous users, error format, throttling."""
 
+import logging
+
 from django.conf import settings
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
@@ -29,6 +31,9 @@ class CsrfFailed(APIException):
     default_detail = "The request was rejected (CSRF check failed). Reload the page."
 
 
+csrf_logger = logging.getLogger("django.security.csrf")
+
+
 class CsrfEnforcingAnonymousAuthentication(BaseAuthentication):
     """Authenticates nobody, but runs Django's CSRF check on every request.
 
@@ -40,7 +45,11 @@ class CsrfEnforcingAnonymousAuthentication(BaseAuthentication):
     def authenticate(self, request):
         check = CSRFCheck(lambda request: None)
         check.process_request(request)
-        if check.process_view(request, None, (), {}) is not None:
+        reason = check.process_view(request, None, (), {})
+        if reason is not None:
+            # DRF's CSRFCheck returns the reason instead of logging it like
+            # Django's middleware does; without it a 403 is hard to diagnose.
+            csrf_logger.warning("Forbidden (%s): %s", reason, request.path)
             raise CsrfFailed()
         return None
 

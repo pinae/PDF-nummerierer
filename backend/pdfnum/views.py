@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 
@@ -10,10 +12,16 @@ def health(request):
 
 
 @require_GET
+@never_cache
 @ensure_csrf_cookie
 def csrf(request):
-    """Sets the csrftoken cookie the SPA echoes in the X-CSRFToken header."""
-    return JsonResponse({"status": "ok"})
+    """Sets the csrftoken cookie the SPA echoes in the X-CSRFToken header.
+
+    The token is in the body as well: Safari makes a cookie from a response
+    readable in document.cookie only a moment later, and the first request
+    after this one must not go out without a token.
+    """
+    return JsonResponse({"csrf_token": get_token(request)})
 
 
 @require_GET

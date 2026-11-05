@@ -99,7 +99,7 @@ PDF-nummerierer/
 ├── e2e/                     # Playwright tests against the real stack
 ├── docs/                    # this document, ADRs if needed
 ├── docker/                  # Dockerfile(s), nginx conf if needed
-├── docker-compose.yml
+├── docker-compose.prod.yml.example  # copied to docker-compose.yml on the server
 ├── Makefile                 # one entry point: make dev / test / e2e / build
 ├── AGENTS.md / CLAUDE.md    # instructions for AI agents
 └── README.md
@@ -608,7 +608,8 @@ with a strict Content Security Policy (no inline scripts, no `eval`, only
 (set by the compose file) trusts Traefik's `X-Forwarded-Proto` and one
 `X-Forwarded-For` entry; off by default, so forwarding headers cannot be
 spoofed. Rate limiting uses a file cache in `/data` shared by all gunicorn
-processes. `docker-compose.yml` runs the app behind Traefik (labels via
+processes. `docker-compose.prod.yml.example` (renamed from `docker-compose.yml`
+after WP12; copied on the server) runs the app behind Traefik (labels via
 `.env`) plus a cleanup service; `docker-compose.local.yml` publishes it on
 localhost for a trial. The e2e suite runs against gunicorn serving the built
 app (`make e2e-production`, also in CI with a Docker build job) and against any

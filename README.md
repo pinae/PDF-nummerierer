@@ -302,7 +302,7 @@ when new major versions are released.
 ## Deployment
 
 The app ships as one Docker image: Django under gunicorn, serving the built
-frontend itself. `docker-compose.yml` runs it behind
+frontend itself. `docker-compose.prod.yml.example` runs it behind
 [Traefik](https://traefik.io/), which terminates TLS. A second container from
 the same image runs the cleanup every five minutes.
 
@@ -311,11 +311,17 @@ the same image runs the cleanup every five minutes.
 Requirements: Docker with Compose, and a running Traefik that watches Docker,
 with an HTTPS entrypoint and a certificate resolver.
 
-1. Copy the example settings and fill them in:
+1. Copy the example compose file and settings, then fill in the settings:
+
+   ```bash
+   cp docker-compose.prod.yml.example docker-compose.yml
+   ```
 
    ```bash
    cp .env.example .env
    ```
+
+   Both copies are ignored by git, so `git pull` never conflicts with them.
 
    At least `PDFNUM_HOST`, `PDFNUM_ALLOWED_HOSTS`, `PDFNUM_SECRET_KEY` and the
    three `TRAEFIK_*` values (network, entrypoint and certificate resolver of
@@ -393,8 +399,8 @@ publishes no port).
 
 ### Deploying with your own tooling (Ansible etc.)
 
-If you template `docker-compose.yml` into your own deployment tool, keep these
-points from the shipped file:
+If you template the compose file into your own deployment tool, keep these
+points from `docker-compose.prod.yml.example`:
 
 - **`pull_policy`.** The image is built on the server, not pulled from a
   registry. The `web` service has `pull_policy: build` and `cleanup` has
@@ -409,13 +415,18 @@ points from the shipped file:
 - **Data directory.** If you bind-mount a host directory to `/data` instead of
   using the named volume, it must be writable by uid 1000 (the `pdfnum` user in
   the image), e.g. `chown 1000:1000 data`. A `data` directory next to the
-  `Dockerfile` is excluded from the build context.
+  `Dockerfile` is excluded from the build context and ignored by git, as is a
+  generated `docker-compose.yml`.
 - The `TRAEFIK_*` variables are only used for the Traefik labels; the
   containers themselves do not need them.
 
 ### Try the image locally
 
 Without Traefik, on http://localhost:8000:
+
+```bash
+cp docker-compose.prod.yml.example docker-compose.yml
+```
 
 ```bash
 cp .env.example .env

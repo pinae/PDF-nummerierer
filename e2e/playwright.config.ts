@@ -30,6 +30,9 @@ const backendEnv = {
   PDFNUM_ALLOWED_HOSTS: "127.0.0.1,localhost",
   PDFNUM_UPLOAD_RATE: "1000/hour",
   PDFNUM_CONFIG_SAVE_RATE: "1000/hour",
+  // The test servers speak plain HTTP. WebKit drops `Secure` cookies there
+  // (Chromium and Firefox keep them on 127.0.0.1), so no CSRF token or session.
+  PDFNUM_SECURE_COOKIES: "0",
 };
 // A fresh database per run, so tests never depend on leftovers.
 const freshDatabase = [`rm -rf "${dataDir}"`, "uv run python manage.py migrate --noinput"];

@@ -1,4 +1,5 @@
-# Production setup behind Traefik. Copy .env.example to .env and fill it in, then:
+# Production setup behind Traefik. Copy this file to docker-compose.yml and
+# .env.example to .env, fill in .env, then:
 #   docker compose up -d --build
 # See README, "Deployment", for the Traefik settings large uploads need.
 name: pdf-nummerierer

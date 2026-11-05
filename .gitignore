@@ -243,3 +243,7 @@ e2e/.data/
 e2e/test-results/
 e2e/playwright-report/
 e2e/blob-report/
+
+# Deployment: local copies of the examples and the bind-mounted data directory
+/docker-compose.yml
+/data/

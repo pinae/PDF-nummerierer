@@ -105,6 +105,9 @@ Environment quirks you may hit in sandboxed/cloud containers:
 - The e2e suite runs in Chromium, Firefox and WebKit. Where Firefox/WebKit
   cannot be downloaded, run `make e2e E2E_BROWSERS=chromium` and say so; CI
   runs all three.
+- The e2e servers speak plain HTTP, so they run with `PDFNUM_SECURE_COOKIES=0`:
+  WebKit drops `Secure` cookies on http://127.0.0.1 while Chromium keeps them,
+  so a Chromium-only run would not notice. `cookies.spec.ts` guards this.
 - Conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`),
   one work package per PR where feasible.
 - Do not add dependencies beyond the stack pinned in `docs/PLANNING.md`

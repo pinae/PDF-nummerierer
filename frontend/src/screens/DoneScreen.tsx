@@ -10,6 +10,7 @@ import { Link as RouterLink, useLocation } from "react-router";
 import { ApiError } from "../api/client";
 import { deleteDocument, getDocument } from "../api/endpoints";
 import { startDownload } from "../generation/download";
+import { useKeepAlive } from "../hooks/useKeepAlive";
 import { sleep, timing } from "../generation/timing";
 import { strings } from "../strings";
 
@@ -49,6 +50,8 @@ export function DoneScreen() {
 function Finished({ run }: { run: FinishedRun }) {
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Until the download has completed the exam is still in use.
+  useKeepAlive(deleted ? null : run.documentId);
 
   // The server deletes the exam once the download is complete; watch for that.
   useEffect(() => {

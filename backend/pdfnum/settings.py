@@ -34,6 +34,9 @@ PDFNUM_FRONTEND_DIR = Path(env_str("PDFNUM_FRONTEND_DIR") or BASE_DIR.parent / "
 PDFNUM_MAX_UPLOAD_BYTES = env_int("PDFNUM_MAX_UPLOAD_BYTES", 500 * 1024 * 1024)
 # Uploaded and generated PDFs are deleted at the latest after this time.
 PDFNUM_RETENTION_SECONDS = env_int("PDFNUM_RETENTION_SECONDS", 2 * 60 * 60)
+# Uploads whose page was closed (no keep-alive from the browser for this long)
+# count as abandoned and are deleted early.
+PDFNUM_IDLE_SECONDS = env_int("PDFNUM_IDLE_SECONDS", 15 * 60, minimum=120)
 PDFNUM_UPLOAD_RATE = env_str("PDFNUM_UPLOAD_RATE", "60/hour")
 PDFNUM_CONFIG_SAVE_RATE = env_str("PDFNUM_CONFIG_SAVE_RATE", "60/hour")
 PDFNUM_MAX_COPIES = env_int("PDFNUM_MAX_COPIES", 9999)

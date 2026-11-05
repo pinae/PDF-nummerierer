@@ -25,5 +25,6 @@ def limits(request):
             "retention_seconds": settings.PDFNUM_RETENTION_SECONDS,
             "max_copies": settings.PDFNUM_MAX_COPIES,
             "max_output_pages": settings.PDFNUM_MAX_OUTPUT_PAGES,
+            "idle_seconds": settings.PDFNUM_IDLE_SECONDS,
         }
     )

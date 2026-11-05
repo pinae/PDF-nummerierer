@@ -16,6 +16,7 @@ ENV_VARS = [
     "PDFNUM_CONFIG_SAVE_RATE",
     "PDFNUM_JOB_TIMEOUT_SECONDS",
     "PDFNUM_FRONTEND_DIR",
+    "PDFNUM_IDLE_SECONDS",
     "PDFNUM_CSRF_TRUSTED_ORIGINS",
     "PDFNUM_HSTS_SECONDS",
     "PDFNUM_TRUST_PROXY",
@@ -250,3 +251,9 @@ def test_frontend_build_is_served_from_the_configured_directory(load_settings, t
     assert Path(settings.PDFNUM_FRONTEND_DIR) == tmp_path
     assert Path(settings.WHITENOISE_ROOT) == tmp_path
     assert "whitenoise.middleware.WhiteNoiseMiddleware" in settings.MIDDLEWARE
+
+
+def test_abandoned_uploads_are_deleted_after_15_idle_minutes_by_default(load_settings):
+    assert load_settings(PDFNUM_SECRET_KEY="x" * 50).PDFNUM_IDLE_SECONDS == 15 * 60
+    settings = load_settings(PDFNUM_SECRET_KEY="x" * 50, PDFNUM_IDLE_SECONDS="300")
+    assert settings.PDFNUM_IDLE_SECONDS == 300

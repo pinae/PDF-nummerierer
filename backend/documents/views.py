@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import transaction
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -60,6 +61,15 @@ class DocumentDetailView(APIView):
 
     def delete(self, request, document_id):
         owned_document(request, document_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DocumentKeepAliveView(APIView):
+    """Sent every minute by an open workspace; abandoned uploads stop sending it."""
+
+    def post(self, request, document_id):
+        document = owned_document(request, document_id)
+        Document.objects.filter(pk=document.pk).update(last_seen_at=timezone.now())
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

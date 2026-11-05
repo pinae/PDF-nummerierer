@@ -13,9 +13,9 @@ export const strings = {
     dropNow: "Drop the PDF to upload it",
     limit: (size: string) => `PDF, up to ${size}`,
     privacy: "Your exam stays private: only this browser can open it.",
-    deletion: (duration: string | null) =>
-      duration
-        ? `It is deleted from the server right after you download the numbered copies, at the latest after ${duration}.`
+    deletion: (retention: string | null, idle: string | null) =>
+      retention && idle
+        ? `It is deleted from the server right after you download the numbered copies, ${idle} after you close this page, and at the latest after ${retention}.`
         : "It is deleted from the server right after you download the numbered copies.",
     uploading: (name: string) => `Uploading ${name}…`,
     progressLabel: "Upload progress",
@@ -46,6 +46,12 @@ export const strings = {
     missingText:
       "It was deleted after the download or expired after some time. Please upload the PDF again.",
     uploadAgain: "Upload a PDF",
+    deletePdf: "Delete PDF",
+    deleteTitle: "Delete this PDF?",
+    deleteText: (name: string) =>
+      `“${name}” is deleted from the server right away, and you can upload another PDF. Saved configurations are kept; unsaved number settings are lost.`,
+    deleteConfirm: "Delete and start over",
+    cancel: "Cancel",
   },
   configs: {
     title: "Configuration",

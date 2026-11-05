@@ -17,6 +17,7 @@ function mockLimits(overrides: Partial<Record<string, number>> = {}) {
         retention_seconds: 7200,
         max_copies: 9999,
         max_output_pages: 100000,
+        idle_seconds: 900,
         ...overrides,
       }),
     ),
@@ -52,6 +53,7 @@ describe("upload screen", () => {
     expect(await screen.findByText("PDF, up to 500 MB")).toBeVisible();
     expect(screen.getByText(/only this browser can open it/)).toBeVisible();
     expect(screen.getByText(/at the latest after 2 hours/)).toBeVisible();
+    expect(screen.getByText(/15 minutes after you close this page/)).toBeVisible();
   });
 
   it("explains the three steps", () => {

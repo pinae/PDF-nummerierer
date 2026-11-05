@@ -20,6 +20,10 @@ export const getDocument = (documentId: string) =>
 export const deleteDocument = (documentId: string) =>
   apiRequest<void>(`/api/documents/${segment(documentId)}/`, { method: "DELETE" });
 
+/** Tell the server the exam is still open (abandoned uploads are deleted early). */
+export const keepAlive = (documentId: string) =>
+  apiRequest<void>(`/api/documents/${segment(documentId)}/keepalive/`, { method: "POST" });
+
 export const listConfigs = () => apiRequest<NumberingConfig[]>("/api/configs/");
 
 export const listConfigVersions = (configId: string) =>

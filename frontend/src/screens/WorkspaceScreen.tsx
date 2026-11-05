@@ -9,6 +9,7 @@ import { useCallback, useReducer, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router";
 
 import { documentFileUrl, startGeneration } from "../api/endpoints";
+import { DeleteDocumentButton } from "../components/DeleteDocumentButton";
 import { ConfigSection } from "../configs/ConfigSection";
 import type { DocumentInfo, Job, PageRole } from "../api/types";
 import { startDownload } from "../generation/download";
@@ -19,6 +20,7 @@ import { runSummary } from "../generation/progress";
 import { RunFooter } from "../generation/RunFooter";
 import { useLimits } from "../hooks/useLimits";
 import { useDocument } from "../hooks/useDocument";
+import { useKeepAlive } from "../hooks/useKeepAlive";
 import { ptToMm } from "../pdf/coordinates";
 import { firstPageOfRole, roleOfPage } from "../pdf/pages";
 import { useFonts } from "../placement/fonts";
@@ -72,15 +74,27 @@ function WorkspaceLoader({ documentId }: { documentId: string }) {
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-      <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 1, ...HIDDEN_ON_PHONES }}>
-        <Typography variant="h5" component="h1">
-          {text.title}
-        </Typography>
-        {state.status === "ready" && (
-          <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
-            {state.document.name}
+      <Box
+        sx={{
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 1, sm: 2 },
+          pb: { xs: 0, sm: 1 },
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h5" component="h1" sx={HIDDEN_ON_PHONES}>
+            {text.title}
           </Typography>
-        )}
+          {state.status === "ready" && (
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+              {state.document.name}
+            </Typography>
+          )}
+        </Box>
+        {state.status === "ready" && <DeleteDocumentButton document={state.document} />}
       </Box>
       {state.status === "loading" && (
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -121,6 +135,7 @@ function Workspace({ document }: { document: DocumentInfo }) {
   const [generation, setGeneration] = useState<GenerationState | null>(null);
   const role = roleOfPage(page);
   const placements = editor.config.placements;
+  useKeepAlive(document.id);
   const { fonts, loadAll } = useFonts(
     ROLES.map((pageRole) => (placements[pageRole] ?? editor.remembered[pageRole]).font),
   );

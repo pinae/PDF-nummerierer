@@ -3,11 +3,22 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 
 def retention() -> dt.timedelta:
     return dt.timedelta(seconds=settings.PDFNUM_RETENTION_SECONDS)
+
+
+def idle_time() -> dt.timedelta:
+    return dt.timedelta(seconds=settings.PDFNUM_IDLE_SECONDS)
+
+
+def _expired_condition() -> Q:
+    """Older than the retention time, or abandoned (no keep-alive for the idle time)."""
+    now = timezone.now()
+    return Q(created_at__lte=now - retention()) | Q(last_seen_at__lte=now - idle_time())
 
 
 def document_path(instance: Document, filename: str) -> str:
@@ -17,10 +28,10 @@ def document_path(instance: Document, filename: str) -> str:
 
 class DocumentQuerySet(models.QuerySet):
     def active(self):
-        return self.filter(created_at__gt=timezone.now() - retention())
+        return self.exclude(_expired_condition())
 
     def expired(self):
-        return self.filter(created_at__lte=timezone.now() - retention())
+        return self.filter(_expired_condition())
 
     def owned_by(self, owner: str | None):
         """Documents of one browser session; expired ones count as gone."""
@@ -44,6 +55,8 @@ class Document(models.Model):
     page_count = models.PositiveIntegerField()
     page_sizes = models.JSONField()  # [[width, height], ...] in points, as displayed
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    # Refreshed by the browser while the exam is open (keep-alive).
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     objects = DocumentQuerySet.as_manager()
 

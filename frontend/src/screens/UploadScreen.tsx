@@ -215,7 +215,11 @@ export function UploadScreen() {
       <Stack direction="row" spacing={1.5} sx={{ mt: 3, alignItems: "flex-start" }}>
         <LockOutlined color="action" aria-hidden sx={{ mt: 0.25 }} />
         <Typography variant="body2" color="text.secondary">
-          {text.privacy} {text.deletion(limits ? formatDuration(limits.retention_seconds) : null)}
+          {text.privacy}{" "}
+          {text.deletion(
+            limits ? formatDuration(limits.retention_seconds) : null,
+            limits ? formatDuration(limits.idle_seconds) : null,
+          )}
         </Typography>
       </Stack>
 

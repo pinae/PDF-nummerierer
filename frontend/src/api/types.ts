@@ -80,4 +80,6 @@ export interface Limits {
   retention_seconds: number;
   max_copies: number;
   max_output_pages: number;
+  /** Uploads without a keep-alive for this long count as abandoned. */
+  idle_seconds: number;
 }

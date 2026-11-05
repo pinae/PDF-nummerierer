@@ -6,6 +6,7 @@ export const defaultLimits = {
   retention_seconds: 7200,
   max_copies: 9999,
   max_output_pages: 100000,
+  idle_seconds: 900,
 };
 
 export const defaultFonts = [
@@ -29,6 +30,7 @@ const defaultHandlers = [
   http.get("/api/limits/", () => HttpResponse.json(defaultLimits)),
   http.get("/api/fonts/", () => HttpResponse.json(defaultFonts)),
   http.get("/api/configs/", () => HttpResponse.json([])),
+  http.post("/api/documents/:id/keepalive/", () => new HttpResponse(null, { status: 204 })),
 ];
 
 /** API mock for all frontend tests. Requests without a handler fail the test. */

@@ -7,6 +7,9 @@ services:
   web:
     build: .
     image: pdf-nummerierer:latest
+    # Built here, never pulled: "docker compose pull" (as run by deployment
+    # tooling) skips it instead of failing on Docker Hub.
+    pull_policy: build
     restart: unless-stopped
     env_file: .env
     environment:
@@ -26,6 +29,8 @@ services:
 
   cleanup:
     image: pdf-nummerierer:latest
+    # Uses the image the web service builds; there is nothing to pull.
+    pull_policy: never
     command: cleanup
     restart: unless-stopped
     env_file: .env

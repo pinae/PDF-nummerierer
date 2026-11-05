@@ -178,6 +178,7 @@ Document
   page_count  int
   page_sizes  JSON           # [w_pt, h_pt] per page as displayed, for the frontend
   created_at  datetime       # drives expiry (expires_at = created_at + TTL)
+  last_seen_at datetime      # refreshed by the open page's keep-alive; idle → expired
 
 GenerationJob                 # lives exactly as long as its document (cascade)
   id          UUID pk
@@ -231,11 +232,12 @@ The UI *displays* positions in millimetres.
 | Method & path | Purpose |
 |---|---|
 | `GET  /api/csrf/` | sets CSRF cookie for the SPA |
-| `GET  /api/limits/` | `{max_upload_bytes, retention_seconds, max_copies, max_output_pages}`, so the UI states the limits up front |
+| `GET  /api/limits/` | `{max_upload_bytes, retention_seconds, idle_seconds, max_copies, max_output_pages}`, so the UI states the limits up front |
 | `POST /api/documents/` | multipart upload (field `file`) → document payload (201) |
 | `GET  /api/documents/{uuid}/` | document payload: `{id, name, size, page_count, page_sizes, created_at, expires_at}` |
 | `GET  /api/documents/{uuid}/file/` | the PDF for preview (owner-checked, `nosniff`, `no-store`) |
-| `DELETE /api/documents/{uuid}/` | "Delete now" (204) |
+| `DELETE /api/documents/{uuid}/` | "Delete now" / "Delete PDF" (204) |
+| `POST /api/documents/{uuid}/keepalive/` | sent every minute while the workspace or done screen is open (204); refreshes `last_seen_at` |
 | `GET/POST /api/configs/` | list latest version per name (sorted by name) / save as next version: 201, or 200 with the latest version if the content is unchanged |
 | `GET /api/configs/{uuid}/` | one config version incl. placements (old versions stay retrievable) |
 | `GET /api/configs/{uuid}/versions/` | all versions of that config's name, newest first |
@@ -323,10 +325,14 @@ a restart). Expired documents are also purged at the start of every upload.
    `as_attachment`, `X-Content-Type-Options: nosniff`) after the session check —
    the web server never serves media directly.
 7. **Deletion**: (a) immediately after a job's output download completes,
-   upload + output + rows are removed; (b) a visible **"Delete now"** button;
-   (c) TTL sweep (default 2 h) as a management command run by cron/compose,
-   plus opportunistic cleanup at the start of upload requests, so files die
-   even if the user walks away mid-flow.
+   upload + output + rows are removed; (b) a visible **"Delete now"** button
+   on the done screen and **"Delete PDF"** in the workspace; (c) TTL sweep
+   (default 2 h) as a management command run by cron/compose, plus
+   opportunistic cleanup at the start of upload requests; (d) abandoned
+   uploads: the open page sends a keep-alive every minute, and a document
+   without one for `PDFNUM_IDLE_SECONDS` (default 15 min) counts as expired,
+   so files die soon after the user closes the browser. The keep-alive never
+   extends the hard 2 h limit.
 8. **Headers & misc**: `SECURE_*` settings, CSP for the SPA, upload endpoint
    throttling per client IP (`PDFNUM_UPLOAD_RATE`, default 60/hour) to blunt
    abuse. Files are written with mode 0600 and never get a URL (`MEDIA_URL`
@@ -607,6 +613,25 @@ processes. `docker-compose.yml` runs the app behind Traefik (labels via
 localhost for a trial. The e2e suite runs against gunicorn serving the built
 app (`make e2e-production`, also in CI with a Docker build job) and against any
 deployment (`E2E_BASE_URL`); both were run in full against the image.
+
+### After WP12 (feedback from the first deployment)
+
+*Status: done.*
+- **Abandoned uploads** are deleted after `PDFNUM_IDLE_SECONDS` without a
+  keep-alive (`Document.last_seen_at`, `POST …/keepalive/` every 60 s from the
+  workspace and done screen). An `unload` beacon was rejected: it also fires on
+  reloads and is unreliable on mobile.
+- **"Delete PDF"** button with a confirmation dialog in the workspace header:
+  deletes the upload and returns to the upload page.
+- **Safari fix**: pdf.js's modern build uses `Map.prototype.getOrInsertComputed`
+  without a fallback, which Safari lacks ("getOrInsertComputed is not a
+  function"). Vite aliases `pdfjs-dist` to its legacy build (page and worker),
+  which polyfills it; `e2e/tests/browser-compat.spec.ts` removes such built-ins
+  in Chromium to guard against regressions.
+- **Browser matrix**: the e2e suite runs in Chromium (desktop, phone),
+  Firefox and WebKit (desktop, iPhone); `E2E_BROWSERS` selects engines.
+- **Compose**: `pull_policy: build`/`never`, so `docker compose pull` (e.g. from
+  Ansible) skips the locally built image instead of failing.
 
 Suggested order: WP0 → WP1 → WP2 → WP5 → WP6 → WP3 → WP7 → WP8 → WP9 → WP4 →
 WP10 → WP11 → WP12 (backend/frontend pairs can interleave; WP1 unblocks

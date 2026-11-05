@@ -10,6 +10,8 @@
 !.yarn/releases
 backend/.venv
 backend/var
+# Data volume when it is bind-mounted inside this directory (uploads, database)
+data
 backend/**/tests
 frontend/dist
 frontend/coverage

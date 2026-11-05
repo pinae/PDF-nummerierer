@@ -20,7 +20,9 @@ need and download one print-ready PDF that contains all numbered copies.
    want it; arrow keys and exact millimetre fields fine-tune it. Each of the
    three placements is optional. Pick a font, a size and the number format
    (e.g. `Exam A – 0042`). Page through the document: the number is previewed
-   live on every page, exactly where it will be printed.
+   live on every page, exactly where it will be printed. Uploaded the wrong
+   file? **Delete PDF** above the page removes it from the server right away
+   and takes you back to the upload page.
 3. **Save the configuration** under a name to reuse it next semester. Saved
    configurations are visible to everyone using the app; saving under an
    existing name creates a new version and never overwrites the old one.
@@ -29,8 +31,13 @@ need and download one print-ready PDF that contains all numbered copies.
    students' pages on one sheet; a switch turns this off. The joined PDF is
    downloaded.
 5. After the download, the uploaded and the generated PDFs are deleted from the
-   server automatically (at the latest after 2 hours); the done screen confirms
-   it. A **Delete now** button is available as well.
+   server automatically; the done screen confirms it. A **Delete now** button
+   is available as well.
+
+Uploads that are left behind are cleaned up too: an open page tells the server
+once a minute that it is still in use. When the page is closed, the PDF is
+deleted after 15 minutes, and in any case at the latest 2 hours after the
+upload.
 
 No account is needed. The app follows the browser's light or dark mode and
 works on phones as well as on large screens.
@@ -125,8 +132,9 @@ make format
 ### End-to-end tests
 
 The Playwright tests start their own Django server (port 8765, fresh database
-in `e2e/.data/`) and a production build of the frontend (port 4173) and run on
-a desktop and a phone viewport. They cover the whole flow from upload to the
+in `e2e/.data/`) and a production build of the frontend (port 4173) and run in
+Chromium (desktop and phone), Firefox and WebKit (Safari engine; desktop and
+iPhone). They cover the whole flow from upload to the
 deleted download, privacy between browsers, both colour schemes, and that the
 number in the preview lands exactly where it is printed (PDFs are inspected
 with the backend's Python environment, so run `make install` first):
@@ -135,11 +143,18 @@ with the backend's Python environment, so run `make install` first):
 make e2e
 ```
 
-`make install` and `make e2e` download the Chromium build that matches the
-installed Playwright version automatically (a no-op when it is already
-there, and after a Playwright update they fetch the new one).
+`make install` and `make e2e` download the Chromium, Firefox and WebKit builds
+that match the installed Playwright version automatically (a no-op when they
+are already there, and after a Playwright update they fetch the new ones).
 
-If Chromium then fails to start because system libraries are missing
+To run only some engines, list them in `E2E_BROWSERS` (`chromium`, `firefox`,
+`webkit`):
+
+```bash
+make e2e E2E_BROWSERS=chromium,webkit
+```
+
+If a browser then fails to start because system libraries are missing
 (`error while loading shared libraries`), install them once (Debian/Ubuntu,
 asks for your sudo password):
 
@@ -191,6 +206,7 @@ The backend is configured with environment variables:
 | `PDFNUM_SECURE_COOKIES` | on unless debug | Send session and CSRF cookies only over HTTPS |
 | `PDFNUM_MAX_UPLOAD_BYTES` | `524288000` (500 MB) | Largest PDF that can be uploaded |
 | `PDFNUM_RETENTION_SECONDS` | `7200` (2 hours) | Uploaded and generated PDFs are deleted at the latest after this time; also the session lifetime |
+| `PDFNUM_IDLE_SECONDS` | `900` (15 minutes, at least 120) | An upload whose page was closed (no keep-alive from the browser for this long) is deleted early |
 | `PDFNUM_UPLOAD_RATE` | `60/hour` | Uploads allowed per client IP (`N/second`, `N/minute`, `N/hour`, `N/day`) |
 | `PDFNUM_CONFIG_SAVE_RATE` | `60/hour` | Saved configurations allowed per client IP (same format) |
 | `PDFNUM_MAX_COPIES` | `9999` | Most copies per run |
@@ -214,7 +230,8 @@ few minutes (the Docker setup will schedule it):
 cd backend && uv run python manage.py cleanup
 ```
 
-It deletes expired documents with their generated PDFs, expired sessions and
+It deletes expired documents (older than the retention time, or abandoned:
+no keep-alive for `PDFNUM_IDLE_SECONDS`) with their generated PDFs, expired sessions and
 abandoned temporary files, and reports generation jobs that were interrupted
 (for example by a server restart).
 
@@ -373,6 +390,28 @@ publishes no port).
   warns that `SECURE_SSL_REDIRECT` is off; that is intended, Traefik redirects
   HTTP to HTTPS. `PDFNUM_HSTS_SECONDS` enables HSTS: start with a small value
   and raise it to a year once HTTPS works.
+
+### Deploying with your own tooling (Ansible etc.)
+
+If you template `docker-compose.yml` into your own deployment tool, keep these
+points from the shipped file:
+
+- **`pull_policy`.** The image is built on the server, not pulled from a
+  registry. The `web` service has `pull_policy: build` and `cleanup` has
+  `pull_policy: never`, so `docker compose pull` (for example Ansible's
+  `community.docker.docker_compose_v2_pull`) skips them instead of failing with
+  `pull access denied for pdf-nummerierer`.
+- **Building.** `docker compose up --build` (or `create`, or Ansible's
+  `docker_compose_v2` with `build: always`) builds the `web` image from the
+  `Dockerfile`, and `cleanup` uses the same image tag. A separate image build
+  step is not needed; if you keep one, it has to produce the tag the compose
+  file uses (`pdf-nummerierer:latest`).
+- **Data directory.** If you bind-mount a host directory to `/data` instead of
+  using the named volume, it must be writable by uid 1000 (the `pdfnum` user in
+  the image), e.g. `chown 1000:1000 data`. A `data` directory next to the
+  `Dockerfile` is excluded from the build context.
+- The `TRAEFIK_*` variables are only used for the Traefik labels; the
+  containers themselves do not need them.
 
 ### Try the image locally
 
